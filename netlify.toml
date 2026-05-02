@@ -1,0 +1,4 @@
+[build]
+  base = "Web_Dashboard"
+  publish = "."
+  command = "mkdir -p assets && printf 'window.__ENV__ = {\n  SUPABASE_URL: \"%s\",\n  SUPABASE_KEY: \"%s\"\n};\n' \"$SUPABASE_URL\" \"$SUPABASE_ANON_KEY\" > assets/env.js"

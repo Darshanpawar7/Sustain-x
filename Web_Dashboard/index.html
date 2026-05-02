@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowState</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.5.0/dist/umd/supabase.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.2/mqttws31.js"></script>
+</head>
+<body>
+    <div class="bg-orb bg-orb-one"></div>
+    <div class="bg-orb bg-orb-two"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Animated Water Background -->
+    <div class="water-background">
+        <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+            <defs>
+                <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+            </defs>
+            <g class="parallax">
+                <use xlink:href="#gentle-wave" x="48" y="0" fill="rgba(30, 136, 229, 0.1)" />
+                <use xlink:href="#gentle-wave" x="48" y="3" fill="rgba(30, 136, 229, 0.2)" />
+                <use xlink:href="#gentle-wave" x="48" y="5" fill="rgba(30, 136, 229, 0.3)" />
+                <use xlink:href="#gentle-wave" x="48" y="7" fill="rgba(30, 136, 229, 0.4)" />
+            </g>
+        </svg>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-title-wrap">
+                    <p class="eyebrow">Smart Utilities Control Center</p>
+                    <h1>FlowState</h1>
+                    <p class="header-subtitle">Live flow, leak risk, humidity comfort, and infrastructure health in one place.</p>
+                </div>
+                <div class="header-status">
+                    <div class="status-badge" id="systemStatus"><span class="status-dot offline"></span>Offline</div>
+                    <label class="critical-mobile-toggle" for="mobileCriticalOnly">
+                        <input type="checkbox" id="mobileCriticalOnly">
+                        <span>Critical-only mobile</span>
+                    </label>
+                    <label class="demo-pass-toggle" for="judgesDemoOnePass">
+                        <input type="checkbox" id="judgesDemoOnePass">
+                        <span>One-pass</span>
+                    </label>
+                    <button id="judgesDemoToggle" class="demo-toggle">▶ Judges Demo Mode</button>
+                    <div class="last-update" id="judgesDemoStatus">Demo: Manual</div>
+                    <button id="themeToggle" class="theme-toggle">🌙 Dark</button>
+                    <div class="last-update" id="lastUpdate">Last Update: --</div>
+                </div>
+            </div>
+        </header>
+
+        <section class="pulse-strip">
+            <div class="pulse-item">
+                <span class="pulse-label">Anomaly Model</span>
+                <span class="pulse-value" id="anomalyStatus">Learning</span>
+            </div>
+            <div class="pulse-item">
+                <span class="pulse-label">Sync Mode</span>
+                <span class="pulse-value">Realtime + Polling Fallback</span>
+            </div>
+            <div class="pulse-item">
+                <span class="pulse-label">Window</span>
+                <span class="pulse-value">2 AM - 5 AM leak watch active</span>
+            </div>
+        </section>
+
+        <section class="card sustainability-lab-section">
+            <div class="sustainability-head">
+                <div>
+                    <p class="sustainability-kicker">Competition Upgrade</p>
+                    <h2>🌍 Sustainability Impact Lab</h2>
+                    <p>Built to solve real-world water waste with measurable outcomes, technical proof, and a clear demo storyline.</p>
+                </div>
+                <div class="sustainability-readiness" id="impactReadiness">Readiness: Gathering baseline data</div>
+            </div>
+
+            <div class="sustainability-kpis">
+                <article class="sustainability-kpi">
+                    <span class="kpi-label">Leak Reduction Opportunity</span>
+                    <span class="kpi-value" id="impactOpportunityLiters">0.0 L/day</span>
+                    <span class="kpi-note">Estimated preventable loss based on live imbalance trend.</span>
+                </article>
+                <article class="sustainability-kpi">
+                    <span class="kpi-label">Projected Monthly Water Savings</span>
+                    <span class="kpi-value" id="impactMonthlySavings">0.0 L/month</span>
+                    <span class="kpi-note">30-day projection if current leak behavior is corrected.</span>
+                </article>
+                <article class="sustainability-kpi">
+                    <span class="kpi-label">Estimated CO2e Avoided</span>
+                    <span class="kpi-value" id="impactCo2Saved">0.00 kg/month</span>
+                    <span class="kpi-note">Uses a water treatment + pumping intensity factor.</span>
+                </article>
+                <article class="sustainability-kpi">
+                    <span class="kpi-label">People-Level Water Equivalent</span>
+                    <span class="kpi-value" id="impactPeopleSupported">0.0 people/day</span>
+                    <span class="kpi-note">Based on 50 L/day per person basic water access benchmark.</span>
+                </article>
+            </div>
+
+            <div class="sustainability-grid">
+                <article class="criterion-card" id="demoProblemCard">
+                    <h3>Problem Understanding <span>15 pts</span></h3>
+                    <p>Tracks leak percentage, anomaly state, and critical windows to show the exact water-loss problem in context.</p>
+                </article>
+                <article class="criterion-card" id="demoInnovationCard">
+                    <h3>Innovation <span>20 pts</span></h3>
+                    <p>Dual flow verification + anomaly learning + automatic valve response combines prevention and intelligence.</p>
+                </article>
+                <article class="criterion-card" id="demoTechCard">
+                    <h3>Technical Implementation <span>20 pts</span></h3>
+                    <p id="criterionTechStatus">Live sensor stream, Supabase ingestion, and real-time dashboard evidence are active.</p>
+                </article>
+                <article class="criterion-card" id="demoImpactCard">
+                    <h3>Sustainability Impact <span>15 pts</span></h3>
+                    <p id="criterionImpactStatus">Impact metrics update from real readings to quantify water and emissions benefits.</p>
+                </article>
+                <article class="criterion-card" id="demoFeasibilityCard">
+                    <h3>Feasibility & Scalability <span>15 pts</span></h3>
+                    <p id="criterionFeasibilityStatus">Built with low-cost sensors, cloud storage, and repeatable deployment for city-scale rollout.</p>
+                </article>
+                <article class="criterion-card" id="demoPresentationCard">
+                    <h3>Presentation & Demo <span>10 pts</span></h3>
+                    <p>Use this flow: problem signal, intervention, quantified impact, then pilot scaling path.</p>
+                </article>
+                <article class="criterion-card" id="demoUxCard">
+                    <h3>UI/UX</h3>
+                    <p>High-contrast status cards, visual tanks, and chart timeframes improve comprehension in under one minute.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="card intelligence-section">
+            <div class="intelligence-head">
+                <div>
+                    <p class="intelligence-kicker">AquaMind Feature Pack</p>
+                    <h2>🧠 Impact Intelligence Studio</h2>
+                    <p>Priority scoring, what-if impact simulation, and recommendation logic tuned for your live ESP32 telemetry.</p>
+                </div>
+                <div class="intelligence-status" id="intelEngineStatus">Engine: Waiting for live reading</div>
+            </div>
+
+            <div class="intelligence-grid">
+                <article class="intel-card">
+                    <h3>Priority & Failure Risk</h3>
+                    <div class="intel-risk-row">
+                        <span class="intel-badge intel-badge-muted" id="aiPriorityLevel">MEDIUM</span>
+                        <span class="intel-score" id="aiPriorityScore">0 / 100</span>
+                    </div>
+                    <div class="intel-metric">
+                        <span>Failure Probability (7d)</span>
+                        <strong id="aiFailureProbability">0.0%</strong>
+                    </div>
+                    <div class="intel-metric">
+                        <span>Immediate Action</span>
+                        <strong id="aiImmediateAction">No</strong>
+                    </div>
+                    <p class="intel-note" id="aiRiskNarrative">Collecting live flow imbalance to calculate risk.</p>
+                </article>
+
+                <article class="intel-card">
+                    <h3>What-If Impact Simulator</h3>
+                    <div class="intel-controls">
+                        <label>
+                            Horizon (days)
+                            <input id="impactHorizonDays" type="number" min="1" max="365" value="30">
+                        </label>
+                        <label>
+                            Repair Cost (USD)
+                            <input id="impactRepairCost" type="number" min="1" step="10" value="800">
+                        </label>
+                        <button class="btn intel-run-btn" id="runImpactSimulationBtn">Analyze Impact</button>
+                    </div>
+                    <div class="intel-sim-grid">
+                        <div>
+                            <span>Ignore: Water Loss</span>
+                            <strong id="simIgnoreLoss">0 L</strong>
+                        </div>
+                        <div>
+                            <span>Ignore: Financial Cost</span>
+                            <strong id="simIgnoreCost">$0.00</strong>
+                        </div>
+                        <div>
+                            <span>Repair: Prevented Water</span>
+                            <strong id="simRepairPrevented">0 L</strong>
+                        </div>
+                        <div>
+                            <span>Projected Savings</span>
+                            <strong id="simSavings">$0.00</strong>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="intel-card">
+                    <h3>Recommendation Engine</h3>
+                    <p class="intel-recommendation" id="aiRecommendationText">No recommendation yet. Awaiting simulation output.</p>
+                    <ul class="intel-insights" id="aiInsightsList">
+                        <li>Live insight feed will appear here.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- Top Row: Tank & Flow Rates -->
+            <div class="monitoring-row">
+                <!-- Tank Level Section -->
+                <section class="card tank-section">
+                    <h2>🏢 Tank Level</h2>
+                    <div class="tank-container">
+                        <div class="water-tank">
+                            <div class="liquid">
+                                <svg class="water" viewBox="0 0 200 100">
+                                    <defs>
+                                        <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0" style="stop-color:#29ABE2"/>
+                                            <stop offset="0.1643" style="stop-color:#28A6E3"/>
+                                            <stop offset="0.3574" style="stop-color:#2496E6"/>
+                                            <stop offset="0.5431" style="stop-color:#1E7DEA"/>
+                                            <stop offset="0.7168" style="stop-color:#1559F0"/>
+                                            <stop offset="0.874" style="stop-color:#0B2CF7"/>
+                                            <stop offset="1" style="stop-color:#0000FF"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <path fill="url(#waterGradient)" d="M 0,0 v 100 h 200 v -100 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5"/>
+                                </svg>
+                            </div>
+                            <div class="indicator" data-value="75"></div>
+                            <div class="indicator" data-value="50"></div>
+                            <div class="indicator" data-value="25"></div>
+                            <div class="label" id="tankLabel">70%</div>
+                        </div>
+                        <div class="tank-info">
+                            <div class="tank-stat">
+                                <span class="label">Level:</span>
+                                <span class="value" id="tankLevel">70 cm</span>
+                            </div>
+                            <div class="tank-stat">
+                                <span class="label">Capacity:</span>
+                                <span class="value">100.0 cm</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Flow Rates Section -->
+                <section class="card flow-section">
+                    <h2>⚡ Flow Rates</h2>
+                    <div class="flow-grid">
+                        <div class="flow-item">
+                            <div class="flow-icon">🔵</div>
+                            <div class="flow-label">Sensor 1<br><small>Tank Outlet</small></div>
+                            <div class="flow-value" id="flow1">0.00 L/min</div>
+                        </div>
+                        <div class="flow-item">
+                            <div class="flow-icon">🟢</div>
+                            <div class="flow-label">Sensor 2<br><small>Output Tap</small></div>
+                            <div class="flow-value" id="flow2">0.00 L/min</div>
+                        </div>
+                    </div>
+                    <div class="flow-comparison">
+                        <div class="comparison-bar">
+                            <div class="bar-item">
+                                <label>Flow 1</label>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFlow1" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="bar-item">
+                                <label>Flow 2</label>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFlow2" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Bottom Row: Leak Detection & Controls -->
+            <div class="bottom-row">
+                <!-- Leak Detection Section -->
+                <section class="card leak-section">
+                    <h2>🚨 Leak Detection</h2>
+                    <div class="leak-display">
+                        <div class="leak-percentage">
+                            <div class="percentage-circle" id="lossPercentageCircle">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="55" class="circle-bg"/>
+                                    <circle cx="60" cy="60" r="55" class="circle-progress" id="circleProgress"/>
+                                </svg>
+                                <div class="percentage-text">
+                                    <span id="lossPercentage">0</span>%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="leak-status">
+                            <div class="status-item">
+                                <span class="label">Status:</span>
+                                <span class="badge normal" id="leakStatus">Normal</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="label">Loss Category:</span>
+                                <div class="categories">
+                                    <div class="category normal-cat">
+                                        <span class="range">&lt;5%</span>
+                                        <span class="text">Normal</span>
+                                    </div>
+                                    <div class="category warning-cat">
+                                        <span class="range">5-15%</span>
+                                        <span class="text">Warning</span>
+                                    </div>
+                                    <div class="category critical-cat">
+                                        <span class="range">&gt;15%</span>
+                                        <span class="text">Critical</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Controls Section -->
+                <section class="card controls-section">
+                    <h2>⚙️ System Controls</h2>
+                    <div class="controls-grid">
+                        <div class="control-item">
+                            <h3>Solenoid Valve</h3>
+                            <div class="valve-status">
+                                <span class="valve-indicator" id="valveIndicator">●</span>
+                                <span class="valve-state" id="valveState">CLOSED</span>
+                            </div>
+                            <div class="button-group">
+                                <button class="btn btn-open" onclick="openValve()">Open</button>
+                                <button class="btn btn-close" onclick="closeValve()">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Daily Statistics -->
+                <section class="card statistics-section">
+                    <h2>📊 Daily Statistics</h2>
+                    <div class="stats-content">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Consumption</span>
+                            <span class="stat-value" id="dailyTotal">0.00 L</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Est. Loss</span>
+                            <span class="stat-value" id="estimatedLoss">0.00 L</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Cost (Per L: $0.05)</span>
+                            <span class="stat-value" id="estimatedCost">$0.00</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Humidity Section -->
+                <section class="card humidity-section">
+                    <h2>🌫️ Ambient Humidity</h2>
+                    <div class="humidity-content">
+                        <div class="humidity-aura humidity-state-muted" id="humidityAura" aria-label="Ambient humidity aura">
+                            <svg class="humidity-orbit" viewBox="0 0 140 140" aria-hidden="true">
+                                <circle class="orbit-track" cx="70" cy="70" r="54"></circle>
+                                <circle class="orbit-progress" id="humidityOrbitProgress" cx="70" cy="70" r="54"></circle>
+                            </svg>
+                            <div class="humidity-core">
+                                <span class="humidity-value" id="humidityValue">0.0%</span>
+                                <span class="humidity-mini-label" id="humidityAuraLabel">NO DATA</span>
+                            </div>
+                            <span class="humidity-spark humidity-spark-1" aria-hidden="true"></span>
+                            <span class="humidity-spark humidity-spark-2" aria-hidden="true"></span>
+                            <span class="humidity-spark humidity-spark-3" aria-hidden="true"></span>
+                        </div>
+                        <div class="humidity-info">
+                            <div class="humidity-main">
+                                <span class="humidity-trend" id="humidityTrend">Waiting for sensor data...</span>
+                            </div>
+                            <div class="tank-stat">
+                                <span class="label">Comfort Band:</span>
+                                <span class="value">30% - 70%</span>
+                            </div>
+                            <div class="humidity-trend-card">
+                                <div class="humidity-comfort humidity-comfort-muted" id="humidityComfortBadge">NO DATA</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Alerts Section -->
+                <section class="card alerts-section">
+                    <h2>🔔 Recent Alerts</h2>
+                    <div class="alerts-toolbar">
+                        <div class="alerts-tabs" id="alertsTabs">
+                            <button class="alerts-tab active" data-severity="all">All <span id="countAll">0</span></button>
+                            <button class="alerts-tab" data-severity="critical">Critical <span id="countCritical">0</span></button>
+                            <button class="alerts-tab" data-severity="warning">Warning <span id="countWarning">0</span></button>
+                        </div>
+                        <div class="alerts-ack-tabs" id="alertsAckTabs">
+                            <button class="alerts-ack-tab active" data-ack="open">Open</button>
+                            <button class="alerts-ack-tab" data-ack="acknowledged">Acknowledged</button>
+                            <button class="alerts-ack-tab" data-ack="all">All states</button>
+                        </div>
+                        <div class="alerts-ack-summary" id="ackSummary">0 unacknowledged</div>
+                        <input type="search" id="alertSearch" class="alerts-search" placeholder="Search alerts..." aria-label="Search alerts">
+                    </div>
+                    <div class="alerts-container" id="alertsContainer">
+                        <div class="alert-item" style="color: #666;">
+                            No alerts yet
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+        </div>
+
+        <!-- Analytics Section -->
+        <section class="card analytics-section">
+            <h2>📊 Analytics & Trends</h2>
+            <div class="analytics-grid">
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <h3 data-chart-title="flow">Flow Rate Trend (1h)</h3>
+                        <div class="timeframe-tabs" data-chart="flow">
+                            <button class="timeframe-tab" data-range="15m">15m</button>
+                            <button class="timeframe-tab active" data-range="1h">1h</button>
+                            <button class="timeframe-tab" data-range="6h">6h</button>
+                            <button class="timeframe-tab" data-range="24h">24h</button>
+                        </div>
+                    </div>
+                    <canvas id="flowChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <h3 data-chart-title="volume">Accumulated Volume (1h)</h3>
+                        <div class="timeframe-tabs" data-chart="volume">
+                            <button class="timeframe-tab" data-range="15m">15m</button>
+                            <button class="timeframe-tab active" data-range="1h">1h</button>
+                            <button class="timeframe-tab" data-range="6h">6h</button>
+                            <button class="timeframe-tab" data-range="24h">24h</button>
+                        </div>
+                    </div>
+                    <canvas id="volumeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <h3 data-chart-title="hourly">Hourly Usage Pattern (1h)</h3>
+                        <div class="timeframe-tabs" data-chart="hourly">
+                            <button class="timeframe-tab" data-range="15m">15m</button>
+                            <button class="timeframe-tab active" data-range="1h">1h</button>
+                            <button class="timeframe-tab" data-range="6h">6h</button>
+                            <button class="timeframe-tab" data-range="24h">24h</button>
+                        </div>
+                    </div>
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <h3 data-chart-title="loss">Loss Percentage Trend (1h)</h3>
+                        <div class="timeframe-tabs" data-chart="loss">
+                            <button class="timeframe-tab" data-range="15m">15m</button>
+                            <button class="timeframe-tab active" data-range="1h">1h</button>
+                            <button class="timeframe-tab" data-range="6h">6h</button>
+                            <button class="timeframe-tab" data-range="24h">24h</button>
+                        </div>
+                    </div>
+                    <canvas id="lossChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-head">
+                        <h3 data-chart-title="humidity">Humidity Trend (1h)</h3>
+                        <div class="timeframe-tabs" data-chart="humidity">
+                            <button class="timeframe-tab" data-range="15m">15m</button>
+                            <button class="timeframe-tab active" data-range="1h">1h</button>
+                            <button class="timeframe-tab" data-range="6h">6h</button>
+                            <button class="timeframe-tab" data-range="24h">24h</button>
+                        </div>
+                    </div>
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Export Section -->
+        <section class="card export-section">
+            <h2>💾 Export Data</h2>
+            <div class="export-container">
+                <div class="export-info">
+                    <p>Download your monitoring data in your preferred format</p>
+                    <div class="export-stats">
+                        <span class="stat-item">📈 <strong id="exportRecordCount">0</strong> Records</span>
+                        <span class="stat-item">⚠️ <strong id="exportAlertCount">0</strong> Alerts</span>
+                    </div>
+                </div>
+                <div class="export-buttons">
+                    <button class="export-btn csv-btn" onclick="exportData('csv')">📥 Export as CSV</button>
+                    <button class="export-btn json-btn" onclick="exportData('json')">📥 Export as JSON</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Configuration Section -->
+        <section class="card configuration-section">
+            <h2>⚙️ Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label class="config-label">Supabase URL</label>
+                    <input type="text" id="supabaseUrl" class="config-input" placeholder="https://your-project.supabase.co">
+                </div>
+                <div class="config-item">
+                    <label class="config-label">API Key</label>
+                    <input type="password" id="supabaseKey" class="config-input" placeholder="Your Supabase API Key">
+                </div>
+                <div class="config-item">
+                    <label class="config-label">Normal Threshold (%)</label>
+                    <input type="number" id="normalThreshold" class="config-input" value="5" min="0" max="100" step="0.1">
+                </div>
+                <div class="config-item">
+                    <label class="config-label">Warning Threshold (%)</label>
+                    <input type="number" id="warningThreshold" class="config-input" value="15" min="0" max="100" step="0.1">
+                </div>
+            </div>
+            <button class="btn btn-save-config" onclick="saveConfiguration()" style="margin-top: 16px;">💾 Save Configuration</button>
+            <p style="margin-top: 12px; font-size: 0.9em; color: var(--text-secondary);">ℹ️ Configuration is saved locally in your browser</p>
+        </section>
+
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 FlowState | Real-time Leak Detection & Analytics</p>
+    </footer>
+
+    <div id="adapterStatusBadge" class="adapter-status-badge" aria-live="polite" aria-atomic="true">
+        <div class="adapter-status-top">
+            <span class="adapter-status-mode" id="adapterModeLabel">LOCAL</span>
+            <span class="adapter-status-dot adapter-health-checking" id="adapterHealthDot" aria-hidden="true"></span>
+            <span class="adapter-status-health" id="adapterHealthLabel">Checking...</span>
+        </div>
+        <div class="adapter-status-url" id="adapterUrlLabel">local://browser</div>
+    </div>
+
+    <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="assets/env.js"></script>
+    <script src="assets/script.js"></script>
+</body>
+</html>

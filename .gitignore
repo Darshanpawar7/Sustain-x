@@ -1,0 +1,95 @@
+# Arduino
+build/
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.elf.map
+
+# ESP32
+.pio/
+.pioenvs/
+.piolibdeps/
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.exe
+*.out
+*.app
+*.so
+*.dylib
+*.dll
+
+# Dependencies
+node_modules/
+*.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+*.sublime-workspace
+*.sublime-project
+
+# Credentials (NEVER commit!)
+.env
+.env.local
+credentials.json
+secrets.json
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.~*
+
+# IDE specific
+.classpath
+.project
+.settings/
+*.sublime-workspace
+
+# Build artifacts
+bin/
+obj/
+out/
+
+# Arduino IDE temp
+applet/
+*.cpp.o
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Dashboard cache
+.cache/
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# CSV exports (local copies)
+*.csv
