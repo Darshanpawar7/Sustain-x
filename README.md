@@ -4,292 +4,287 @@
 
 [Darshanpawar7](https://github.com/Darshanpawar7)
 
-FlowState is a real-time water monitoring and leak detection system built with an ESP32 firmware layer, a Supabase backend, and a responsive browser dashboard. It tracks flow, tank level, humidity, and leak risk, then surfaces the data in a live operations view designed for demos, pilots, and production prototypes.
+FlowState is a real-time water monitoring and leak detection system built with an ESP32 firmware layer, a Supabase backend, and a responsive browser dashboard. It tracks flow, tank level, humidity, and leak risk, closes a shut-off valve automatically when a leak is critical, and lets an operator open or close the valve from the dashboard.
 
 Live demo: [https://sustainflow.netlify.app/](https://sustainflow.netlify.app/)
 
 ## Overview
 
-The project combines three parts:
+The project has four parts:
 
-- ESP32 firmware in [ESP32_Code/water_monitoring.ino](ESP32_Code/water_monitoring.ino)
+- ESP32 firmware in [ESP32_Code/water_monitoring/](ESP32_Code/water_monitoring/)
 - Supabase migrations in [supabase/migrations/](supabase/migrations/)
-- Web dashboard in [Web_Dashboard/](Web_Dashboard/)
+- A static web dashboard in [Web_Dashboard/](Web_Dashboard/), deployed on Netlify
+- Tests for all of the above in [tests/](tests/), run by [CI](.github/workflows/ci.yml)
 
-The firmware reads sensors every second, uploads measurements to Supabase, evaluates leak status in rolling windows, and triggers alerts when thresholds are exceeded. The dashboard consumes the live data, shows historical charts, and provides manual valve control plus operational summaries.
+The firmware counts pulses from two flow sensors every second and compares them. Water that leaves the tank but never reaches the tap is a leak. Critical leaks close the valve and sound an alarm, without waiting for the network. Every 5 seconds the device uploads a reading to Supabase and collects any valve command sent from the dashboard. The dashboard shows live values, flags a device that has gone quiet, and draws history charts summarised by the database.
 
 ## Key Capabilities
 
-- Dual flow verification using two flow sensors on separate lines
-- Real-time leak classification with Normal, Warning, and Critical states
-- Baseline learning for anomaly detection over the first few days of operation
-- Nighttime leak monitoring between 2 AM and 5 AM
-- Automatic valve shutdown on critical conditions
-- Supabase-backed data storage with row-level security
-- Live dashboard with charts, status cards, alerts, and export tools
-- Manual override and serial command control for field debugging
-- Humidity tracking alongside flow and tank level telemetry
+- Dual flow verification using two flow sensors on the same line
+- Leak classification (Normal, Warning, Critical) over a sliding 60-second window, plus a fast check for sudden large leaks
+- Automatic valve shutdown on critical leaks; the valve position survives power cuts
+- Night-time watch (2 AM to 5 AM local time) for continuous flow
+- A usage baseline that learns normal litres per hour of the day and flags unusual hours
+- Remote valve control from the dashboard, protected by an operator key and confirmed by the device
+- Device-offline detection: the dashboard says when data stops arriving
+- Secure writes: the public key is read-only; the device writes with its own secret key
+- HTTPS certificate checking on the device
+- History charts for 15 minutes to 24 hours, daily totals, CSV and JSON export
+- Automatic clean-up of old data
+- Serial console commands for field debugging
 
 ## System Architecture
 
 ```text
-Water source -> Sensors -> ESP32 -> Supabase -> Dashboard
-                   |          |          |
-                   |          |          +-> alerts table
-                   |          +-> water_readings table
-                   +-> flow, level, humidity, valve control
+Flow sensors ─┐
+Level sensor ─┼─> ESP32 ──HTTPS──> Supabase ──> Dashboard (Netlify)
+Humidity ─────┘    │  ▲             │  ▲              │
+                   │  └─ valve command in reply ◄─────┘ request_valve_command
+                   └─> servo valve + alarm             (operator key)
+
+ESP32 writes through key-checked functions: ingest_reading, log_device_alert
+Dashboard reads with the public key: water_readings, alerts, history summaries
 ```
 
 ## Repository Structure
 
-| Path                                                               | Purpose                                                             |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| [ESP32_Code/water_monitoring.ino](ESP32_Code/water_monitoring.ino) | Firmware for sensor capture, leak logic, uploads, and valve control |
-| [Web_Dashboard/](Web_Dashboard/)                                   | Static HTML, CSS, and JavaScript dashboard                          |
-| [supabase/migrations/](supabase/migrations/)                       | Database schema, indexes, RLS, and grants                           |
-| [netlify.toml](netlify.toml)                                       | Netlify build config for dashboard environment injection            |
+| Path | Purpose |
+| ---- | ------- |
+| [ESP32_Code/water_monitoring/](ESP32_Code/water_monitoring/) | Arduino sketch: sensing, leak logic, valve, networking |
+| [supabase/migrations/](supabase/migrations/) | Database schema, permissions, device API, history and retention |
+| [Web_Dashboard/](Web_Dashboard/) | Static HTML, CSS and JavaScript dashboard (no build step) |
+| [scripts/netlify-build.mjs](scripts/netlify-build.mjs) | Netlify build step: writes `env.js` and security headers |
+| [tests/](tests/) | Database, firmware-logic, dashboard unit and browser tests |
+| [.github/workflows/ci.yml](.github/workflows/ci.yml) | Runs every test and a firmware compile on each push |
 
 ## Hardware
 
 ### Recommended Components
 
-| Component                     | Notes                                      |
-| ----------------------------- | ------------------------------------------ |
-| ESP32 development board       | Main controller                            |
-| 2x flow sensors               | GPIO 19 and 22 in the current firmware     |
-| Capacitive water level sensor | Analog input on GPIO 33                    |
-| DS3231 RTC module             | Timekeeping for baseline and timestamping  |
-| DHT22 sensor                  | Humidity input on GPIO 4                   |
-| Servo-driven shutoff valve    | Controlled on GPIO 26                      |
-| Buzzer                        | Alarm output on GPIO 13                    |
-| 5V and 12V power supply       | Match the sensor and actuator requirements |
+| Component | Notes |
+| --------- | ----- |
+| ESP32 development board | Main controller |
+| 2x YF-S201 flow sensors | Sensor 1 near the tank, sensor 2 near the tap |
+| Capacitive water level sensor | Analog input |
+| DS3231 RTC module | Keeps time when there is no internet |
+| DHT22 sensor | Humidity |
+| Servo-driven shut-off valve | Open at 0°, closed at 90° (configurable) |
+| Buzzer | Leak alarm |
+| 5V and 12V power supply | Match the sensor and actuator requirements |
 
-### Current Pin Map
+### Pin Map
 
-| Signal             | GPIO |
-| ------------------ | ---- |
-| Flow sensor 1      | 19   |
-| Flow sensor 2      | 22   |
-| Water level sensor | 33   |
-| Buzzer             | 13   |
-| Servo valve        | 26   |
-| DHT22              | 4    |
-| RTC I2C SDA        | 18   |
-| RTC I2C SCL        | 21   |
+| Signal | GPIO |
+| ------ | ---- |
+| Flow sensor 1 (tank side) | 19 |
+| Flow sensor 2 (tap side) | 22 |
+| Water level sensor | 33 |
+| Buzzer | 13 |
+| Servo valve | 26 |
+| DHT22 | 4 |
+| RTC I2C SDA | 18 |
+| RTC I2C SCL | 21 |
+
+Pins, calibration and thresholds live in [flowstate_config.h](ESP32_Code/water_monitoring/flowstate_config.h).
 
 ## How It Works
 
-The firmware computes leak percentage as the loss between the upstream and downstream flow sensors. The current logic classifies readings as follows:
+**Leak detection.** Each second the firmware turns pulse counts into volumes and compares the two sensors over the last 60 seconds:
 
-- Normal: below 5 percent loss
-- Warning: 5 to 15 percent loss
-- Critical: above 15 percent loss
+- Normal: under 5% of the water goes missing
+- Warning: 5% to 15%
+- Critical: over 15%, held for 5 seconds in a row
 
-The system also maintains a rolling baseline for anomaly detection. After the baseline is established, unexpected usage spikes are flagged and recorded in Supabase as alerts.
+A separate fast check looks at the last 5 seconds and closes the valve within about 5 seconds of a sudden large leak. Both checks wait until enough water has flowed to judge fairly, so the normal one-pulse wobble between two sensors at low flow never closes the valve.
 
-## Prerequisites
+**When a leak is critical** the valve closes, the alarm sounds, and the status stays Critical until someone reopens the valve. If the leak is still there, the valve closes again within seconds. `OVERRIDE_ON` on the serial console turns automatic shut-off off.
 
-- Arduino IDE or compatible ESP32 toolchain
-- ESP32 board support installed in the IDE
-- A Supabase project
-- A static web host for the dashboard, or local file serving for development
-- The hardware listed above
+**Night watch.** Between 2 AM and 5 AM local time, water flowing for 5 minutes without a break raises an alert; 10 minutes closes the valve. A single toilet flush does not.
+
+**Usage baseline.** Over the first 3 days the device learns typical litres for each hour of the day, and keeps learning afterwards. An hour that uses far more than usual raises an alert. Learning is saved in flash and survives restarts.
+
+**Time.** The RTC holds UTC, internet time (NTP) keeps it correct, and `TIMEZONE` in the config turns it into local time. Database timestamps are always set by the server.
 
 ## Quick Start
 
-1. Create or open a Supabase project.
-2. Apply the SQL files in [supabase/migrations/](supabase/migrations/) in order.
-3. Open [ESP32_Code/water_monitoring.ino](ESP32_Code/water_monitoring.ino) and replace the WiFi and Supabase placeholders with your own values.
-4. Build and upload the firmware to the ESP32.
-5. Open [Web_Dashboard/index.html](Web_Dashboard/index.html) through a static host or local server.
-6. Configure the dashboard with the same Supabase URL and anon key.
-7. Verify readings appear in the dashboard and in the Supabase tables.
+1. **Database.** In your Supabase project's SQL editor, run every file in [supabase/migrations/](supabase/migrations/) in name order (001 to 008). They are safe to re-run.
+2. **Keys.** In the SQL editor, create a key for the device and one for each person who may move the valve. Each key is shown once, so copy it:
+
+   ```sql
+   select private.create_access_key('esp32-main', 'device');
+   select private.create_access_key('operator-1', 'operator');
+   ```
+
+3. **Firmware.** In `ESP32_Code/water_monitoring/`, copy `secrets.example.h` to `secrets.h` and fill in your Wi-Fi details, Supabase URL, public (anon) key and the device key. Check `TIMEZONE` in `flowstate_config.h`.
+4. **Flash.** Open `water_monitoring.ino` in the Arduino IDE, select "ESP32 Dev Module", and upload. Open the Serial Monitor at 115200 baud and type `STATUS`.
+5. **Dashboard.** Deploy to Netlify (see below), or serve `Web_Dashboard/` locally and enter your Supabase URL and public key under **Settings** at the bottom of the page.
+6. **Valve control.** Enter an operator key under **Settings** → *Valve control key*. The Open and Close buttons then send real commands.
+
+## Upgrading an Existing Installation
+
+- **Export any data you want to keep first.** Migration 008 schedules a daily clean-up that deletes readings older than 30 days and alerts older than 180 days. To keep more, change the defaults of `private.purge_old_data` before applying it.
+- Your old database let anyone with the public key write rows. Before trusting old data, look through `alerts` and `water_readings` for entries you don't recognise and delete them.
+- After migrations 005 to 008, the public key can no longer write. **Firmware older than 1.1.0 stops uploading** until you flash the new firmware with a device key.
+- The RTC now holds UTC. The first internet time sync corrects any old local time automatically.
+- Rows dated in the future (from the old time-zone bug or forged data) are hidden from the dashboard and deleted by the daily clean-up.
+- Browsers that saved connection settings in the old version have them cleared once; re-enter them only if you use a different project.
 
 ## ESP32 Firmware Setup
 
-### Arduino Libraries
+### Board and Libraries
 
-Install the libraries used by the firmware:
+- Board package: **esp32 by Espressif Systems 3.3.0 or newer** (needed for built-in HTTPS certificate checking)
+- Libraries (Library Manager): ArduinoJson 7, RTClib, ESP32Servo, DHT sensor library, Adafruit Unified Sensor
 
-- ArduinoJson
-- RTClib
-- ESP32Servo
-- DHT sensor library
-- ESP32 board package
+### Files
 
-### Configuration Values
+| File | What to change |
+| ---- | -------------- |
+| `secrets.h` (from `secrets.example.h`) | Wi-Fi, Supabase URL, public key, device key. Ignored by git. |
+| `flowstate_config.h` | Pins, calibration, thresholds, `TIMEZONE`, upload interval |
+| Other files | Program logic; no settings |
 
-The firmware is designed to be customized for your environment. Update the following values in the sketch before flashing:
+### Calibration
 
-```cpp
-const char *SSID = "YOUR_WIFI_SSID";
-const char *PASSWORD = "YOUR_WIFI_PASSWORD";
-const char *SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const char *SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
-```
+- **Flow sensors.** Run exactly 10 L through the pipe, type `STATUS`, and divide each sensor's pulse count by 10. Put the results in `FLOW_SENSOR_1_PULSES_PER_LITER` and `FLOW_SENSOR_2_PULSES_PER_LITER`. Matching the two sensors matters, because a small calibration difference looks like a small leak.
+- **Tank level.** The serial log shows the raw ADC value. Note it with the sensor dry, then fully submerged, and enter them as `WATER_LEVEL_ADC_IN_AIR` and `WATER_LEVEL_ADC_IN_WATER`. If the tank shows full when it is empty, swap the two numbers.
+- **Time zone.** Set `TIMEZONE` to your POSIX time zone, for example `IST-5:30` for India.
 
-Calibration values are also set in the firmware:
+### Serial Commands
 
-```cpp
-const float FLOW_SENSOR_CALIBRATION = 7.5;
-const int WATER_LEVEL_IN_AIR = 4095;
-const int WATER_LEVEL_IN_WATER = 1000;
-const float TANK_HEIGHT_CM = 100.0;
-```
+Open the Serial Monitor at 115200 baud and send one command per line (any line-ending setting works):
 
-### Upload Checklist
-
-- Select the ESP32 board and COM port
-- Upload the sketch
-- Open Serial Monitor at 115200 baud
-- Confirm WiFi connection
-- Confirm Supabase connectivity
-- Confirm readings are being posted every second
+| Command | Action |
+| ------- | ------ |
+| STATUS | Print the full system state |
+| VALVE_OPEN | Open the valve (clears a leak lockout) |
+| VALVE_CLOSE | Close the valve |
+| VALVE_TOGGLE | Toggle the valve |
+| OVERRIDE_ON | Turn automatic leak shut-off off |
+| OVERRIDE_OFF | Turn automatic leak shut-off back on |
+| SILENCE | Stop the alarm without moving the valve |
+| HELP | List the commands |
 
 ## Supabase Setup
 
-The repository includes database migrations for the full schema:
+### Migrations
 
-- [20260410_001_create_water_tables.sql](supabase/migrations/20260410_001_create_water_tables.sql)
-- [20260410_002_indexes_realtime.sql](supabase/migrations/20260410_002_indexes_realtime.sql)
-- [20260410_003_rls_and_grants.sql](supabase/migrations/20260410_003_rls_and_grants.sql)
-- [20260412_004_add_humidity_to_water_readings.sql](supabase/migrations/20260412_004_add_humidity_to_water_readings.sql)
+| File | Purpose |
+| ---- | ------- |
+| 001 to 004 | Tables, indexes, Realtime, read policies, humidity column |
+| [005_lock_down_direct_writes](supabase/migrations/20260929_005_lock_down_direct_writes.sql) | Makes the public key read-only; adds per-reading volumes |
+| [006_access_keys](supabase/migrations/20260929_006_access_keys.sql) | Hashed device and operator keys in a private schema |
+| [007_device_api_and_valve_commands](supabase/migrations/20260929_007_device_api_and_valve_commands.sql) | Key-checked write functions and the valve command queue |
+| [008_history_and_retention](supabase/migrations/20260929_008_history_and_retention.sql) | Chart history, daily totals and automatic clean-up |
 
-If you prefer manual setup, the core tables are:
+### Data Model
 
-- `water_readings` for telemetry
-- `alerts` for events and incidents
+- `water_readings`: one row per upload with flows, loss %, level, humidity, valve state, leak and anomaly status, and the volume each sensor measured since the previous upload (`volume_1_ml`, `volume_2_ml`)
+- `alerts`: timestamp, type, message, severity (`low`, `medium`, `high`, `critical`)
+- `valve_commands`: dashboard requests and whether the device has collected them
 
-### Data Model Summary
+### Managing Keys
 
-`water_readings` currently stores:
+```sql
+select private.create_access_key('operator-2', 'operator');  -- new key, shown once
+select private.revoke_access_key('operator-1');              -- stop a key working
+select label, role, created_at, last_used_at, revoked_at from private.access_keys;
+```
 
-- timestamp
-- flow_rate_1
-- flow_rate_2
-- percentage_loss
-- water_level
-- humidity
-- valve_state
-- leak_status
-- anomaly_status
-- system_online
-- daily_total_liters
+### Retention
 
-`alerts` stores:
+Readings are kept for 30 days, alerts for 180 days and valve commands for 30 days. On Supabase the clean-up runs daily through pg_cron. Check that it is scheduled with:
 
-- timestamp
-- alert_type
-- message
-- severity
+```sql
+select jobname, schedule from cron.job where jobname = 'flowstate-purge-old-data';
+```
+
+If that returns nothing (pg_cron is not enabled), enable pg_cron under Database → Extensions and re-run migration 008, or run `select private.purge_old_data();` yourself regularly.
 
 ## Dashboard Setup
 
-The dashboard is a static site with a built-in local simulator fallback and remote API mode.
+### Netlify Deployment
+
+[netlify.toml](netlify.toml) publishes `Web_Dashboard/` and runs [scripts/netlify-build.mjs](scripts/netlify-build.mjs), which writes `assets/env.js` and strict security headers (Content-Security-Policy and others). Set these environment variables in Netlify:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY` (the anon or publishable key; the build refuses a secret key)
+
+A deployed dashboard only connects to that database. Its Settings panel then only holds the valve control key.
+
+Optional, for an external analysis service:
+
+- `API_ADAPTER_MODE` set to `remote`
+- `API_BASE_URL` for that service (https)
 
 ### Local Development
 
-Serve the `Web_Dashboard/` directory with any static server, then open the dashboard in a browser.
-
-### Netlify Deployment
-
-The provided [netlify.toml](netlify.toml) publishes the `Web_Dashboard/` directory and generates [Web_Dashboard/assets/env.js](Web_Dashboard/assets/env.js) from Netlify environment variables.
-
-Set these variables in Netlify:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-
-Optional dashboard adapter variables:
-
-- `API_ADAPTER_MODE` set to `local` or `remote`
-- `API_BASE_URL` for the remote adapter backend
+Serve the folder with any static server, for example `npx serve Web_Dashboard` or `python -m http.server --directory Web_Dashboard`. Then either fill in `Web_Dashboard/assets/env.js` (do not commit real values) or enter your Supabase URL and public key under **Settings**.
 
 ## Runtime Behavior
 
-- Sensor readings are sampled every second
-- Leak detection runs on a 60 second window
-- Data is uploaded to Supabase every second in the current firmware
-- Baseline learning completes after roughly 3 days of usage history
-- Nighttime leak detection runs from 2 AM to 5 AM
-- Critical leaks can trigger automatic valve closure
-- The dashboard subscribes to realtime updates and falls back to polling when needed
+| Metric | Behavior |
+| ------ | -------- |
+| Sensor sampling | Every second |
+| Leak window | Sliding 60 seconds, plus a 5-second fast check |
+| Upload interval | Every 5 seconds (`UPLOAD_INTERVAL_MS`) |
+| Dashboard updates | Realtime, with polling every 5 seconds as a fallback |
+| Device marked delayed / offline | After 15 seconds / 1 minute without data |
+| Night watch | 2 AM to 5 AM local time |
+| Baseline learning | About 3 days, then continuous |
+| Data kept | 30 days of readings |
 
-## Serial Commands
+## Testing
 
-Open the Serial Monitor at 115200 baud and send one command per line:
+```bash
+npm install
+npm test                    # dashboard logic (Node's built-in test runner)
+npm run test:db             # migrations and permissions (needs PostgreSQL's initdb/pg_ctl/psql, or DATABASE_URL)
+npx playwright install chromium
+npm run test:e2e            # the real dashboard in a headless browser against a simulated Supabase
+g++ -std=c++11 -I ESP32_Code/water_monitoring tests/firmware/flowstate_logic_test.cpp -o logic_test && ./logic_test
+```
 
-| Command      | Action                     |
-| ------------ | -------------------------- |
-| STATUS       | Print current system state |
-| VALVE_OPEN   | Open the valve             |
-| VALVE_CLOSE  | Close the valve            |
-| VALVE_TOGGLE | Toggle valve state         |
-| OVERRIDE_ON  | Enable manual override     |
-| OVERRIDE_OFF | Disable manual override    |
-
-## Dashboard Features
-
-- Live tank level visualization
-- Dual flow rate cards
-- Leak status gauge
-- Ambient humidity panel
-- Recent alerts with filtering and acknowledgement state
-- Timeframe controls for charts
-- Daily statistics and estimated loss figures
-- CSV and JSON export
-- Manual valve controls
-- Theme toggle and demo mode helpers
+CI runs all of these on every push, plus a full ESP32 compile.
 
 ## Troubleshooting
 
-### ESP32 does not connect to WiFi
+### The serial log says "rejected (403)"
 
-- Verify the SSID and password
-- Use a 2.4 GHz network
-- Check signal strength and router access
+The device key is wrong or revoked. Create a new one with `private.create_access_key` and update `secrets.h`.
+
+### The serial log says "failed (404)"
+
+Migrations 005 to 008 have not been applied.
+
+### The dashboard says "Device offline"
+
+No reading has arrived for over a minute. Check the device's power, Wi-Fi (2.4 GHz only) and serial log.
+
+### The valve buttons say the key was not accepted
+
+Check the operator key under **Settings**, or create a new one.
+
+### The tank reads backwards
+
+Swap `WATER_LEVEL_ADC_IN_AIR` and `WATER_LEVEL_ADC_IN_WATER`.
+
+### Night-watch alerts arrive at the wrong time
+
+Set `TIMEZONE` in `flowstate_config.h`. `STATUS` shows the device's local time and where it came from.
 
 ### No flow readings
 
-- Confirm both sensors have power
-- Check GPIO 19 and 22 wiring
-- Make sure water is actually flowing through the sensors
-
-### Water level is unstable
-
-- Recheck the sensor power and analog wiring
-- Recalibrate the air and submerged values
-- Inspect for loose connections or noisy ADC input
-
-### Dashboard shows no data
-
-- Confirm the Supabase URL and anon key match the firmware
-- Verify the database migrations were applied
-- Check the browser console for fetch or auth errors
-- Confirm the ESP32 serial log shows successful uploads
-
-### Valve does not move
-
-- Verify the actuator wiring and power supply
-- Confirm GPIO 26 is connected to the servo control line
-- Test manual commands from the Serial Monitor
-
-## Performance Notes
-
-| Metric               | Current Behavior |
-| -------------------- | ---------------- |
-| Sensor sampling      | 1 second         |
-| Leak window          | 60 seconds       |
-| Upload interval      | 1 second         |
-| Baseline period      | About 3 days     |
-| Nighttime leak watch | 2 AM to 5 AM     |
+Check the sensors' power and the GPIO 19 and 22 wiring, and make sure water is flowing.
 
 ## Security Notes
 
-- Do not commit real WiFi or Supabase credentials
-- Use the Supabase anon key, not the service role key, in the browser
-- Keep RLS enabled on the database tables
-- Treat water-usage telemetry as potentially sensitive operational data
+- The public key only reads. Readings and alerts are written through functions that check the device's secret key.
+- Keep `secrets.h` out of git (it is ignored by default) and never put the `service_role` key in the firmware or the dashboard.
+- Operator keys move the valve: give each person their own and revoke keys that are no longer needed.
+- The dashboard's data is readable by anyone with the public key, which is the same as anyone who can open the site.
+- See [SECURITY.md](SECURITY.md) for details.
 
 ## License
 

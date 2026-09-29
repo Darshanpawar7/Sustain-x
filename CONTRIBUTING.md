@@ -1,6 +1,6 @@
-# Contributing to Water Leak Detection System
+# Contributing to FlowState
 
-First off, thank you for considering a contribution to this project! It's people like you that make the Water Leak Detection System such a great tool.
+First off, thank you for considering a contribution to this project! It's people like you that make FlowState such a great tool.
 
 ---
 
@@ -139,13 +139,20 @@ const waterLevelPercentage = (sensorValue / maxValue) * 100;
 
 // Arrow functions for callbacks
 data.forEach(reading => {
-  console.log(reading.timestamp);
+  renderReading(reading);
 });
 
 // Comment complex logic
 // Calculate loss: ((Flow1 - Flow2) / Flow1) * 100
 const percentageLoss = ((flow1 - flow2) / flow1) * 100;
+
+// Put text from the database on the page with textContent, never innerHTML
+title.textContent = alert.alert_type;
 ```
+
+Dashboard code lives in small modules under `Web_Dashboard/assets/js/`. Pure logic (no DOM, no network) belongs in `lib.js`, where it can be unit-tested. The page runs under a strict Content-Security-Policy, so do not add inline `<script>`, `onclick=` or `style=` attributes.
+
+Firmware logic that does not touch hardware belongs in `flowstate_logic.h`, where the host tests can reach it.
 
 ### HTML/CSS
 
@@ -171,11 +178,22 @@ const percentageLoss = ((flow1 - flow2) / flow1) * 100;
 
 ## 🧪 Testing
 
-Before submitting:
+Before submitting, run the automated tests (CI runs them too):
 
-1. **Test on actual hardware** - Upload to ESP32 and verify Serial output
-2. **Test dashboard** - Open in multiple browsers (Chrome, Firefox, Safari)
-3. **Test database** - Verify data appears in Supabase
+```bash
+npm install
+npm test                  # dashboard logic
+npm run test:db           # database migrations and permissions
+npx playwright install chromium
+npm run test:e2e          # dashboard in a real browser
+g++ -std=c++11 -Wall -Wextra -I ESP32_Code/water_monitoring tests/firmware/flowstate_logic_test.cpp -o logic_test && ./logic_test
+```
+
+Then check by hand:
+
+1. **Test on actual hardware** - Upload to the ESP32 and check the serial output
+2. **Test the dashboard** - Open it in multiple browsers (Chrome, Firefox, Safari)
+3. **Test the database** - Check that readings appear in Supabase
 4. **Test edge cases**:
    - Low flow rates
    - No internet connection
@@ -185,11 +203,15 @@ Before submitting:
 ### Serial Monitor Verification
 
 ```
-[WiFi] Connected successfully
-[SUPABASE] HTTP 200 OK - Ready to send data
-[SENSOR] Flow1: X.XX L/min | Flow2: X.XX L/min
-[SUPABASE] Data uploaded successfully
+=== FlowState starting ===
+[VALVE] Restored OPEN
+[TIME] Clock started from the RTC
+[WiFi] Connected to <network>, IP 192.168.x.x, signal -60 dBm
+[TIME] Internet time received
+[SENSOR] Flow 1.20 / 1.18 L/min | loss 1.7% Normal | level 45.0 cm (ADC 2400) | humidity 55% | valve OPEN | Wi-Fi OK
 ```
+
+Type `STATUS` to see upload health (`last HTTP 200` means readings are being stored).
 
 ---
 
@@ -208,20 +230,24 @@ If you're adding new features:
 
 ### For ESP32 Firmware
 
-1. Install Arduino IDE
-2. Add ESP32 board support
-3. Install required libraries (ArduinoJson, RTClib)
-4. Clone this repository
-5. Configure WiFi & Supabase credentials in code
+1. Install the Arduino IDE (or arduino-cli)
+2. Add ESP32 board support: "esp32 by Espressif Systems" 3.3.0 or newer
+3. Install the libraries: ArduinoJson 7, RTClib, ESP32Servo, DHT sensor library, Adafruit Unified Sensor
+4. Clone this repository and open `ESP32_Code/water_monitoring/water_monitoring.ino`
+5. Copy `secrets.example.h` to `secrets.h` and fill it in (git ignores it)
 6. Build and upload
 
 ### For Web Dashboard
 
 1. Clone this repository
-2. Make changes to HTML/CSS/JS in Web_Dashboard/
-3. Test locally by opening index.html in browser
-4. Test with actual ESP32 sending data
-5. Verify in Supabase dashboard
+2. Make changes to the HTML/CSS/JS in `Web_Dashboard/`
+3. Serve the folder locally (for example `npx serve Web_Dashboard`) and enter your Supabase URL and public key under Settings
+4. Test with an ESP32 sending data
+5. Check the data in the Supabase dashboard
+
+### For the Database
+
+Add a new numbered migration in `supabase/migrations/` rather than editing an old one, keep it safe to re-run, and add assertions to `tests/db/assertions.sql`.
 
 ---
 
