@@ -1,6 +1,10 @@
+// Deployment settings for the dashboard.
+// On Netlify this file is regenerated at build time from environment variables
+// (see scripts/netlify-build.mjs). For local use, either fill these in or enter
+// the values in the dashboard's Settings panel.
 window.__ENV__ = window.__ENV__ || {
-  SUPABASE_URL: "https://dnbvhwqvgqxmbumbqpdj.supabase.co",
-  SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRuYnZod3F2Z3F4bWJ1bWJxcGRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDYyNDIsImV4cCI6MjA4NzE4MjI0Mn0.GBN_BKrwm9IHdeKzyduniBOLsgox_R9W9WvVDwZ2HaQ",
+  SUPABASE_URL: "",
+  SUPABASE_KEY: "",
   API_ADAPTER_MODE: "local",
-  API_BASE_URL: "http://localhost:8000"
+  API_BASE_URL: ""
 };

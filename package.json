@@ -1,0 +1,19 @@
+{
+  "name": "flowstate",
+  "private": true,
+  "description": "Test and build tooling for the FlowState dashboard, database migrations and firmware logic. The dashboard itself has no build step.",
+  "scripts": {
+    "test": "node --test \"tests/dashboard/*.test.mjs\"",
+    "test:db": "node tests/db/run.mjs",
+    "test:e2e": "node --test \"tests/e2e/*.test.mjs\"",
+    "build:dashboard": "cd Web_Dashboard && node ../scripts/netlify-build.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.117.2",
+    "chart.js": "3.9.1",
+    "playwright": "1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
