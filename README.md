@@ -56,6 +56,7 @@ Dashboard reads with the public key: water_readings, alerts, history summaries
 | [Web_Dashboard/](Web_Dashboard/) | Static HTML, CSS and JavaScript dashboard (no build step) |
 | [scripts/netlify-build.mjs](scripts/netlify-build.mjs) | Netlify build step: writes `env.js` and security headers |
 | [tests/](tests/) | Database, firmware-logic, dashboard unit and browser tests |
+| [docs/wiring-guide.html](docs/wiring-guide.html) | Visual wiring and breadboard guide for the hardware |
 | [.github/workflows/ci.yml](.github/workflows/ci.yml) | Runs every test and a firmware compile on each push |
 
 ## Hardware
@@ -87,6 +88,43 @@ Dashboard reads with the public key: water_readings, alerts, history summaries
 | RTC I2C SCL | 21 |
 
 Pins, calibration and thresholds live in [flowstate_config.h](ESP32_Code/water_monitoring/flowstate_config.h).
+
+### Wiring Guide
+
+Open [docs/wiring-guide.html](docs/wiring-guide.html) in a browser (it works offline). It shows:
+
+- a colour-coded map of the 30-pin board
+- a breadboard layout with all 35 jumpers, hole by hole
+- a wire table for each part
+- the order of the pipe fittings
+- a checklist that remembers your progress
+
+**ESP32 connections** (30-pin DevKit V1, seen from the top, USB down):
+
+![ESP32 pin map showing which part connects to each pin](docs/images/esp32-pin-map.png)
+
+**Breadboard layout** (top rails are 5 V, bottom rails are 3.3 V, both blue rails are ground):
+
+![Breadboard layout with the ESP32, level converter, clock, DHT22, buzzer and every jumper wire](docs/images/breadboard-layout.png)
+
+Four rules keep the board safe:
+
+1. **Flow sensors need a level converter.** Their signal is 5 V and ESP32 pins take 3.3 V. Wire each yellow signal wire through a 4-channel logic level converter (HV side to 5 V, LV side to 3V3).
+2. **Small sensors run on 3V3.** The DS3231, DHT22 and level sensor go to 3V3, never 5 V.
+3. **The servo has its own supply.** Use a separate 5 V 2 A adapter with a 470–1000 µF capacitor across it. Powering it from the ESP32 makes the board restart when the valve moves.
+4. **All grounds are connected together,** including the servo adapter's ground.
+
+Two easy mistakes:
+
+- **Clock pins:** the DS3231 uses **SDA → D18 and SCL → D21**, not the usual 21/22, because D22 is taken by flow sensor 2.
+- **Buzzer:** it must be an active buzzer that sounds when the pin is HIGH.
+
+Extra parts these rules need:
+
+- a 4-channel logic level converter
+- a 5 V 2 A adapter for the servo
+- a 470–1000 µF capacitor
+- a 10 kΩ resistor, if your DHT22 is a bare 4-leg sensor
 
 ## How It Works
 
