@@ -1,0 +1,383 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FlowState Wiring Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --ink:#15231d; --muted:#556a60; --line:#d3ddd7;
+  --board:#1d5c43; --board-edge:#123d2c; --pin:#c9a44c; --pin-ink:#f1f5f2;
+  --v5:#d23c3c; --v33:#e07b00; --gnd:#222c28;
+  --flow:#1d7fc4; --rtc:#7b52c9; --level:#0e8f7c; --dht:#6f9417; --buzz:#c93a57; --servo:#b0561b;
+  --ok:#1a8a4d; --okbg:#e3f4ea; --warn:#9a5b00; --warnbg:#fff3df;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0f1714; --surface:#16211c; --ink:#e6efea; --muted:#9db3a8; --line:#2b3b33;
+    --board:#1f6a4c; --board-edge:#0c2a1e; --gnd:#c9d3ce;
+    --flow:#4aa8ec; --rtc:#a585ea; --level:#35c2ab; --dht:#9cc440; --buzz:#ee6d88; --servo:#e0874a;
+    --okbg:#12301f; --ok:#5fd291; --warnbg:#35270c; --warn:#f0b75a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0f1714; --surface:#16211c; --ink:#e6efea; --muted:#9db3a8; --line:#2b3b33;
+  --board:#1f6a4c; --board-edge:#0c2a1e; --gnd:#c9d3ce;
+  --flow:#4aa8ec; --rtc:#a585ea; --level:#35c2ab; --dht:#9cc440; --buzz:#ee6d88; --servo:#e0874a;
+  --okbg:#12301f; --ok:#5fd291; --warnbg:#35270c; --warn:#f0b75a;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:28px 60px;display:grid;gap:28px}
+h1{font-size:1.9rem;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:0 0 10px;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.sub{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.verdict{background:var(--okbg);border:1px solid var(--ok);border-radius:10px;padding:14px 16px;display:grid;gap:4px}
+.verdict strong{color:var(--ok)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.rule{background:var(--warnbg);border-radius:10px;padding:12px 14px;display:grid;gap:4px;border-left:4px solid var(--warn)}
+.rule b{color:var(--warn)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto}
+.diagram svg{display:block;min-width:720px;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:.85rem;color:var(--muted);margin-top:8px}
+.sw{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+.part{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:start}
+.part h3{margin:0;font-size:1.02rem;display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.to{font-family:var(--mono);font-weight:600;white-space:nowrap}
+.note{font-size:.85rem;color:var(--muted)}
+.note b{color:var(--ink)}
+ol.check{list-style:none;padding:0;margin:0;display:grid;gap:8px;counter-reset:s}
+ol.check li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+ol.check li::before{content:counter(s);font-family:var(--mono);color:var(--muted);min-width:1.4em}
+ol.check input{width:18px;height:18px;margin-top:2px;accent-color:var(--ok)}
+ol.check li.done{opacity:.6}
+ol.check label{cursor:pointer}
+.progress{font-family:var(--mono);color:var(--muted);font-size:.85rem}
+input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.flow-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:600}
+.flow-line span.node{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.flow-line span.arrow{color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <p class="sub mono">FlowState · ESP32 DevKit V1 (30-pin)</p>
+    <h1>FlowState Wiring Guide</h1>
+    <p class="sub">Which wire goes where, checked against the firmware in <span class="mono">flowstate_config.h</span>. Unplug the USB cable while you wire.</p>
+  </header>
+
+  <section class="verdict">
+    <strong>✓ The pin choices are correct.</strong>
+    <p>No pin is a boot, flash or input-only pin, the level sensor uses an ADC pin that still works with Wi-Fi on, and no two parts share a pin. Follow the four rules below and the wiring is safe.</p>
+  </section>
+
+  <section>
+    <h2>Four rules before you start</h2>
+    <div class="rules">
+      <div class="rule"><b>1. Flow sensors need a level converter</b><p>Their signal is 5 V; ESP32 pins take 3.3 V. Wire each yellow signal through a 4-channel logic level converter.</p></div>
+      <div class="rule"><b>2. Small sensors run on 3V3</b><p>The clock, humidity and level sensors go to <span class="mono">3V3</span>, never 5 V, so their signals stay safe.</p></div>
+      <div class="rule"><b>3. The servo gets its own 5 V supply</b><p>Use a separate 5 V 2 A adapter. Powering it from the ESP32 makes the board restart when the valve moves.</p></div>
+      <div class="rule"><b>4. One shared ground</b><p>Every GND (board, sensors, converter, servo adapter) connects together.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Board map</h2>
+    <p class="sub" style="margin-bottom:10px">Seen from the top, antenna up, USB down. Match the printed labels: a 38-pin board has the same labels in different places.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 760 560" role="img" aria-label="ESP32 30-pin board with the pins FlowState uses">
+        <rect x="260" y="30" width="240" height="500" rx="14" fill="var(--board)" stroke="var(--board-edge)" stroke-width="3"/>
+        <rect x="320" y="42" width="120" height="70" rx="6" fill="var(--board-edge)"/>
+        <text x="380" y="82" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="13" fill="var(--pin-ink)">ESP32</text>
+        <rect x="350" y="500" width="60" height="30" rx="4" fill="#9aa5a0"/>
+        <text x="380" y="520" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1a1a1a">USB</text>
+        <g id="pins" font-family="IBM Plex Mono, monospace" font-size="12"></g>
+      </svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--v5)"></i>5 V</span>
+        <span><i class="sw" style="background:var(--v33)"></i>3.3 V</span>
+        <span><i class="sw" style="background:var(--gnd)"></i>GND</span>
+        <span><i class="sw" style="background:var(--flow)"></i>Flow sensors</span>
+        <span><i class="sw" style="background:var(--rtc)"></i>Clock (DS3231)</span>
+        <span><i class="sw" style="background:var(--level)"></i>Level sensor</span>
+        <span><i class="sw" style="background:var(--dht)"></i>DHT22</span>
+        <span><i class="sw" style="background:var(--buzz)"></i>Buzzer</span>
+        <span><i class="sw" style="background:var(--servo)"></i>Servo</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Breadboard layout</h2>
+    <p class="sub" style="margin-bottom:10px">One full-size breadboard (60 columns, rows a–j). The ESP32 lies across the centre gap in columns 1–15 with the USB port on the left. Each column's five holes (a–e, and f–j) are connected, so a jumper can go in any free hole of the pin's column.</p>
+    <div class="diagram">
+      <svg id="bb" viewBox="-40 0 960 430" role="img" aria-label="Breadboard with the ESP32, level converter, clock, humidity sensor and buzzer, and every jumper wire"></svg>
+    </div>
+    <div class="rules" style="margin-top:12px">
+      <div class="rule" style="border-left-color:var(--v5);background:var(--surface)"><b style="color:var(--v5)">Top rails = 5 V</b><p>Top red (+) is fed from <span class="mono">VIN</span>. Only the flow sensors and the converter's HV side use it.</p></div>
+      <div class="rule" style="border-left-color:var(--v33);background:var(--surface)"><b style="color:var(--v33)">Bottom rails = 3.3 V</b><p>Bottom red (+) is fed from <span class="mono">3V3</span>. Clock, DHT22, level sensor and converter LV use it.</p></div>
+      <div class="rule" style="border-left-color:var(--gnd);background:var(--surface)"><b style="color:var(--ink)">Both blue rails = GND</b><p>Join them with one black jumper at column 60, so all grounds are shared.</p></div>
+    </div>
+    <p class="note" style="margin-top:10px">If your ESP32 covers every hole in its columns, use two breadboards side by side with the board bridging them. Everything else stays the same.</p>
+
+    <div class="diagram" style="margin-top:14px;min-width:0">
+      <table id="jumpers"><tr><th>#</th><th>From</th><th>To</th><th>What it does</th></tr></table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Part by part</h2>
+    <div class="parts">
+      <article class="part">
+        <h3><span class="dot" style="background:var(--flow)"></span>Logic level converter (4-channel)</h3>
+        <table><tr><th>Converter pin</th><th>Connect to</th></tr>
+          <tr><td>HV</td><td class="to" style="color:var(--v5)">VIN (5 V)</td></tr>
+          <tr><td>LV</td><td class="to" style="color:var(--v33)">3V3</td></tr>
+          <tr><td>GND (both sides)</td><td class="to">GND</td></tr>
+          <tr><td>LV1</td><td class="to" style="color:var(--flow)">D19</td></tr>
+          <tr><td>LV2</td><td class="to" style="color:var(--flow)">D22</td></tr>
+        </table>
+        <p class="note">HV1 and HV2 take the flow sensors' yellow wires (below).</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--flow)"></span>Flow sensor 1 (tank side) · YF-S201</h3>
+        <table><tr><th>Wire</th><th>Connect to</th></tr>
+          <tr><td>Red</td><td class="to" style="color:var(--v5)">VIN (5 V)</td></tr>
+          <tr><td>Black</td><td class="to">GND</td></tr>
+          <tr><td>Yellow</td><td class="to" style="color:var(--flow)">Converter HV1 → D19</td></tr>
+        </table>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--flow)"></span>Flow sensor 2 (tap side) · YF-S201</h3>
+        <table><tr><th>Wire</th><th>Connect to</th></tr>
+          <tr><td>Red</td><td class="to" style="color:var(--v5)">VIN (5 V)</td></tr>
+          <tr><td>Black</td><td class="to">GND</td></tr>
+          <tr><td>Yellow</td><td class="to" style="color:var(--flow)">Converter HV2 → D22</td></tr>
+        </table>
+        <p class="note">The arrow on each sensor must point the way the water flows.</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--rtc)"></span>Clock · DS3231</h3>
+        <table><tr><th>Module pin</th><th>Connect to</th></tr>
+          <tr><td>VCC</td><td class="to" style="color:var(--v33)">3V3</td></tr>
+          <tr><td>GND</td><td class="to">GND</td></tr>
+          <tr><td>SDA</td><td class="to" style="color:var(--rtc)">D18</td></tr>
+          <tr><td>SCL</td><td class="to" style="color:var(--rtc)">D21</td></tr>
+        </table>
+        <p class="note"><b>Not the usual 21/22.</b> Online guides say SDA→21, SCL→22; this project uses SDA→18, SCL→21 because D22 is taken by flow sensor 2. Leave SQW and 32K empty.</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--dht)"></span>Humidity · DHT22</h3>
+        <table><tr><th>Sensor pin</th><th>Connect to</th></tr>
+          <tr><td>+ / VCC</td><td class="to" style="color:var(--v33)">3V3</td></tr>
+          <tr><td>OUT / DATA</td><td class="to" style="color:var(--dht)">D4</td></tr>
+          <tr><td>− / GND</td><td class="to">GND</td></tr>
+        </table>
+        <p class="note">A bare 4-leg DHT22 also needs a <b>10 kΩ resistor between VCC and DATA</b>. The 3-pin module already has one.</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--level)"></span>Water level sensor (capacitive)</h3>
+        <table><tr><th>Sensor pin</th><th>Connect to</th></tr>
+          <tr><td>VCC</td><td class="to" style="color:var(--v33)">3V3</td></tr>
+          <tr><td>GND</td><td class="to">GND</td></tr>
+          <tr><td>AOUT</td><td class="to" style="color:var(--level)">D33</td></tr>
+        </table>
+        <p class="note">Keep the top part with the electronics dry. Calibrate later with the raw ADC values from the serial log.</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--buzz)"></span>Buzzer (active)</h3>
+        <table><tr><th>Buzzer pin</th><th>Connect to</th></tr>
+          <tr><td>+ (long leg)</td><td class="to" style="color:var(--buzz)">D13</td></tr>
+          <tr><td>− (short leg)</td><td class="to">GND</td></tr>
+        </table>
+        <p class="note">Must be an <b>active</b> buzzer that sounds when the pin is HIGH. If it beeps nonstop at power-on, it is a "low-level trigger" module: swap it.</p>
+      </article>
+
+      <article class="part">
+        <h3><span class="dot" style="background:var(--servo)"></span>Valve servo · MG996R</h3>
+        <table><tr><th>Wire</th><th>Connect to</th></tr>
+          <tr><td>Orange / yellow</td><td class="to" style="color:var(--servo)">D26</td></tr>
+          <tr><td>Red</td><td class="to" style="color:var(--v5)">+5 V of the separate adapter</td></tr>
+          <tr><td>Brown / black</td><td class="to">Adapter GND <i>and</i> ESP32 GND</td></tr>
+        </table>
+        <p class="note">Put a <b>470–1000 µF capacitor</b> across the adapter's +5 V and GND (long leg to +). Firmware: 0° = open, 90° = closed; test with <span class="mono">VALVE_OPEN</span> / <span class="mono">VALVE_CLOSE</span> and adjust the angles if needed.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pipe order</h2>
+    <div class="flow-line">
+      <span class="node">Tank</span><span class="arrow">→</span>
+      <span class="node" style="color:var(--flow)">Flow sensor 1</span><span class="arrow">→</span>
+      <span class="node" style="color:var(--servo)">Valve</span><span class="arrow">→</span>
+      <span class="node">Leak test point (T-joint)</span><span class="arrow">→</span>
+      <span class="node" style="color:var(--flow)">Flow sensor 2</span><span class="arrow">→</span>
+      <span class="node">Tap</span>
+    </div>
+    <p class="note" style="margin-top:8px">Opening the T-joint lets water escape between the sensors, which is how you demonstrate a leak.</p>
+  </section>
+
+  <section>
+    <h2>Wiring checklist <span class="progress" id="progress"></span></h2>
+    <ol class="check" id="checklist">
+      <li><input type="checkbox" id="c1"><label for="c1">USB unplugged. Board on the breadboard, labels readable.</label></li>
+      <li><input type="checkbox" id="c2"><label for="c2">Ground rail: ESP32 GND → breadboard blue rail.</label></li>
+      <li><input type="checkbox" id="c3"><label for="c3">Level converter: HV→VIN, LV→3V3, both GND→GND, LV1→D19, LV2→D22.</label></li>
+      <li><input type="checkbox" id="c4"><label for="c4">Flow sensor 1: red→VIN, black→GND, yellow→HV1.</label></li>
+      <li><input type="checkbox" id="c5"><label for="c5">Flow sensor 2: red→VIN, black→GND, yellow→HV2.</label></li>
+      <li><input type="checkbox" id="c6"><label for="c6">DS3231: VCC→3V3, GND→GND, SDA→D18, SCL→D21.</label></li>
+      <li><input type="checkbox" id="c7"><label for="c7">DHT22: +→3V3, OUT→D4, −→GND (10 kΩ pull-up if bare sensor).</label></li>
+      <li><input type="checkbox" id="c8"><label for="c8">Level sensor: VCC→3V3, GND→GND, AOUT→D33.</label></li>
+      <li><input type="checkbox" id="c9"><label for="c9">Buzzer: +→D13, −→GND.</label></li>
+      <li><input type="checkbox" id="c10"><label for="c10">Servo: signal→D26, red→adapter +5 V, brown→adapter GND, adapter GND→ESP32 GND, capacitor fitted.</label></li>
+      <li><input type="checkbox" id="c11"><label for="c11">Double-check: only the flow sensors and converter HV use VIN (5 V); the servo uses its own adapter; everything else is on 3V3.</label></li>
+      <li><input type="checkbox" id="c12"><label for="c12">Plug in USB, open Serial Monitor at 115200, type <span class="mono">STATUS</span>. You should see the valve state, level ADC value and humidity.</label></li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(function(){
+  var left=["EN","VP","VN","D34","D35","D32","D33","D25","D26","D27","D14","D12","D13","GND","VIN"];
+  var right=["D23","D22","TX0","RX0","D21","D19","D18","D5","TX2","RX2","D4","D2","D15","GND","3V3"];
+  var use={
+    "D33":["Level AOUT","--level"],"D26":["Servo signal","--servo"],"D13":["Buzzer +","--buzz"],
+    "VIN":["5 V out","--v5"],"GND":["Ground","--gnd"],
+    "D22":["Flow 2 (via LV2)","--flow"],"D21":["DS3231 SCL","--rtc"],"D19":["Flow 1 (via LV1)","--flow"],
+    "D18":["DS3231 SDA","--rtc"],"D4":["DHT22 DATA","--dht"],"3V3":["3.3 V out","--v33"]
+  };
+  var g=document.getElementById("pins"), ns="http://www.w3.org/2000/svg";
+  function el(tag,attrs,text){var e=document.createElementNS(ns,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(text)e.textContent=text;g.appendChild(e);return e;}
+  function side(list,isLeft){
+    list.forEach(function(name,i){
+      var y=138+i*25, px=isLeft?272:488, u=use[name];
+      var color=u?"var("+u[1]+")":"var(--pin)";
+      el("circle",{cx:px,cy:y,r:u?7:5,fill:color,stroke:"var(--board-edge)","stroke-width":1.5});
+      el("text",{x:isLeft?px+14:px-14,y:y+4,"text-anchor":isLeft?"start":"end",fill:"var(--pin-ink)","font-weight":u?"600":"400"},name);
+      if(u){
+        var x2=isLeft?120:640;
+        el("line",{x1:isLeft?px-8:px+8,y1:y,x2:x2,y2:y,stroke:color,"stroke-width":3,"stroke-linecap":"round"});
+        el("text",{x:isLeft?x2-6:x2+6,y:y+4,"text-anchor":isLeft?"end":"start",fill:"var(--ink)","font-size":"11.5","font-family":"IBM Plex Sans, sans-serif"},u[0]);
+      }
+    });
+  }
+  side(left,true); side(right,false);
+
+  // ---------------- Breadboard ----------------
+  var bb=document.getElementById("bb");
+  function E(tag,a,t){var e=document.createElementNS(ns,tag);for(var k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;bb.appendChild(e);return e;}
+  var X=function(c){return 40+(c-1)*14.2;};
+  var ROW={a:140,b:154,c:168,d:182,e:196,f:230,g:244,h:258,i:272,j:286,"T+":96,"T-":110,"B+":320,"B-":334};
+  function P(c,r){return [X(c),ROW[r]];}
+  // board body
+  E("rect",{x:18,y:84,width:884,height:262,rx:10,fill:"var(--surface)",stroke:"var(--line)","stroke-width":2});
+  E("rect",{x:18,y:207,width:884,height:12,fill:"var(--bg)"});
+  [["T+","var(--v5)","+5V"],["T-","var(--gnd)","GND"],["B+","var(--v33)","+3.3V"],["B-","var(--gnd)","GND"]].forEach(function(r){
+    E("line",{x1:30,x2:890,y1:ROW[r[0]]-8,y2:ROW[r[0]]-8,stroke:r[1],"stroke-width":1.5,opacity:.5});
+    E("text",{x:894,y:ROW[r[0]]+4,"font-size":9,fill:r[1],"font-family":"IBM Plex Mono, monospace","text-anchor":"end"},"");
+  });
+  E("text",{x:24,y:94,"font-size":10,fill:"var(--v5)","font-family":"IBM Plex Mono, monospace","font-weight":"600"},"5V");
+  E("text",{x:24,y:318,"font-size":10,fill:"var(--v33)","font-family":"IBM Plex Mono, monospace","font-weight":"600"},"3V3");
+  for(var c=1;c<=60;c++){
+    ["a","b","c","d","e","f","g","h","i","j"].forEach(function(r){E("rect",{x:X(c)-2.5,y:ROW[r]-2.5,width:5,height:5,rx:1,fill:"var(--line)"});});
+    if(c%2)["T+","T-","B+","B-"].forEach(function(r){E("rect",{x:X(c)-2.5,y:ROW[r]-2.5,width:5,height:5,rx:1,fill:"var(--line)"});});
+    if(c%5===0||c===1){E("text",{x:X(c),y:130,"text-anchor":"middle","font-size":8,fill:"var(--muted)","font-family":"IBM Plex Mono, monospace"},c);}
+  }
+  ["a","e","f","j"].forEach(function(r){E("text",{x:30,y:ROW[r]+3,"text-anchor":"middle","font-size":8,fill:"var(--muted)","font-family":"IBM Plex Mono, monospace"},r);});
+  // ESP32 across the gap, columns 1-15, header pins in rows c (top) and h (bottom)
+  var topPins=["VIN","GND","D13","D12","D14","D27","D26","D25","D33","D32","D35","D34","VN","VP","EN"];
+  var botPins=["3V3","GND","D15","D2","D4","RX2","TX2","D5","D18","D19","D21","RX0","TX0","D22","D23"];
+  E("rect",{x:X(1)-9,y:160,width:X(15)-X(1)+18,height:106,rx:6,fill:"var(--board)",stroke:"var(--board-edge)","stroke-width":2});
+  E("rect",{x:X(1)-22,y:200,width:16,height:26,rx:3,fill:"#9aa5a0"});
+  E("text",{x:X(8),y:217,"text-anchor":"middle","font-size":11,fill:"var(--pin-ink)","font-family":"IBM Plex Mono, monospace"},"ESP32 DevKit V1");
+  topPins.forEach(function(n,i){var p=P(i+1,"c");E("circle",{cx:p[0],cy:p[1],r:3.5,fill:"var(--pin)"});E("text",{x:p[0],y:p[1]+14,"text-anchor":"middle","font-size":6.5,fill:"var(--pin-ink)","font-family":"IBM Plex Mono, monospace"},n);});
+  botPins.forEach(function(n,i){var p=P(i+1,"h");E("circle",{cx:p[0],cy:p[1],r:3.5,fill:"var(--pin)"});E("text",{x:p[0],y:p[1]-8,"text-anchor":"middle","font-size":6.5,fill:"var(--pin-ink)","font-family":"IBM Plex Mono, monospace"},n);});
+  // modules on the board
+  function mod(c1,c2,r1,r2,label,color){var a=P(c1,r1),b=P(c2,r2);E("rect",{x:a[0]-7,y:a[1]-7,width:b[0]-a[0]+14,height:b[1]-a[1]+14,rx:4,fill:"var(--bg)",stroke:color,"stroke-width":2});E("text",{x:(a[0]+b[0])/2,y:(a[1]+b[1])/2+3,"text-anchor":"middle","font-size":8.5,fill:color,"font-family":"IBM Plex Sans, sans-serif","font-weight":"600"},label);}
+  mod(20,23,"e","f","Level converter","var(--flow)");
+  mod(30,33,"g","g","DS3231","var(--rtc)");
+  mod(37,39,"g","g","DHT22","var(--dht)");
+  mod(48,49,"c","c","Buzzer","var(--buzz)");
+  mod(55,56,"d","d","Cap","var(--servo)");
+  // off-board parts (labels where their wires come from)
+  function part(x,y,label,color){E("rect",{x:x-44,y:y-11,width:88,height:20,rx:5,fill:"var(--surface)",stroke:color,"stroke-width":1.5});E("text",{x:x,y:y+3,"text-anchor":"middle","font-size":9,fill:color,"font-family":"IBM Plex Sans, sans-serif","font-weight":"600"},label);return [x,y];}
+  var F1=part(X(21),24,"Flow sensor 1","var(--flow)"), F2=part(X(31),24,"Flow sensor 2","var(--flow)");
+  var LV=part(X(9)-4,408,"Level sensor","var(--level)"), SV=part(X(52),24,"Servo","var(--servo)"), AD=part(X(58)+8,24,"5V adapter","var(--v5)");
+
+  var n=0, rows=document.getElementById("jumpers");
+  function wire(from,to,color,fromTxt,toTxt,why,arc){
+    n++;
+    var a=from,b=to,lift=arc!=null?arc:(Math.min(a[1],b[1])<210?-34:34);
+    var midY=(lift<0?Math.min(a[1],b[1]):Math.max(a[1],b[1]))+lift;
+    var d=arc==="left"
+      ? "M"+a[0]+" "+a[1]+" C-70 "+a[1]+" -70 "+b[1]+" "+b[0]+" "+b[1]
+      : "M"+a[0]+" "+a[1]+" C"+a[0]+" "+midY+" "+b[0]+" "+midY+" "+b[0]+" "+b[1];
+    E("path",{d:d,fill:"none",stroke:color,"stroke-width":2.6,"stroke-linecap":"round",opacity:.95});
+    E("circle",{cx:a[0],cy:a[1],r:3,fill:color});E("circle",{cx:b[0],cy:b[1],r:3,fill:color});
+    var tr=document.createElement("tr");
+    [String(n),fromTxt,toTxt,why].forEach(function(t,i){var td=document.createElement("td");td.textContent=t;if(i===1||i===2)td.className="to";if(i===0)td.style.color=color;tr.appendChild(td);});
+    tr.firstChild.style.fontWeight="700";
+    rows.appendChild(tr);
+  }
+  var R="var(--v5)",O="var(--v33)",K="var(--gnd)",B="var(--flow)";
+  wire(P(1,"a"),P(1,"T+"),R,"1a (VIN)","Top + rail","5 V feed",-8);
+  wire(P(2,"a"),P(2,"T-"),K,"2a (GND)","Top − rail","Ground",-8);
+  wire(P(1,"j"),P(1,"B+"),O,"1j (3V3)","Bottom + rail","3.3 V feed",8);
+  wire(P(2,"j"),P(2,"B-"),K,"2j (GND)","Bottom − rail","Ground",8);
+  wire(P(60,"T-"),P(60,"B-"),K,"Top − rail, col 60","Bottom − rail, col 60","Join the two grounds",0);
+  wire(P(22,"a"),P(22,"T+"),R,"22a (converter HV)","Top + rail","Converter 5 V side",-8);
+  wire(P(23,"a"),P(23,"T-"),K,"23a (converter GND)","Top − rail","Ground",-8);
+  wire(P(22,"j"),P(22,"B+"),O,"22j (converter LV)","Bottom + rail","Converter 3.3 V side",8);
+  wire(P(23,"j"),P(23,"B-"),K,"23j (converter GND)","Bottom − rail","Ground",8);
+  wire(P(20,"i"),P(10,"i"),B,"20i (converter LV1)","10i (D19)","Flow 1 signal to ESP32",30);
+  wire(P(21,"j"),P(14,"j"),B,"21j (converter LV2)","14j (D22)","Flow 2 signal to ESP32",22);
+  wire(F1,P(20,"a"),"#d8b400","Flow 1 yellow","20a (converter HV1)","Flow 1 signal in",0);
+  wire(F1,P(26,"T+"),R,"Flow 1 red","Top + rail","Flow 1 power",0);
+  wire(F1,P(27,"T-"),K,"Flow 1 black","Top − rail","Flow 1 ground",0);
+  wire(F2,P(21,"b"),"#d8b400","Flow 2 yellow","21b (converter HV2)","Flow 2 signal in",0);
+  wire(F2,P(33,"T+"),R,"Flow 2 red","Top + rail","Flow 2 power",0);
+  wire(F2,P(34,"T-"),K,"Flow 2 black","Top − rail","Flow 2 ground",0);
+  wire(P(30,"j"),P(30,"B+"),O,"30j (DS3231 VCC)","Bottom + rail","Clock power",8);
+  wire(P(31,"j"),P(31,"B-"),K,"31j (DS3231 GND)","Bottom − rail","Ground",8);
+  wire(P(32,"i"),P(9,"i"),"var(--rtc)","32i (DS3231 SDA)","9i (D18)","Clock data",46);
+  wire(P(33,"j"),P(11,"j"),"var(--rtc)","33j (DS3231 SCL)","11j (D21)","Clock clock-line",38);
+  wire(P(37,"j"),P(37,"B+"),O,"37j (DHT22 +)","Bottom + rail","Humidity power",8);
+  wire(P(38,"i"),P(5,"i"),"var(--dht)","38i (DHT22 OUT)","5i (D4)","Humidity data",56);
+  wire(P(39,"j"),P(39,"B-"),K,"39j (DHT22 −)","Bottom − rail","Ground",8);
+  wire(LV,P(44,"B+"),O,"Level VCC","Bottom + rail","Level power",0);
+  wire(LV,P(45,"B-"),K,"Level GND","Bottom − rail","Ground",0);
+  wire(LV,P(9,"a"),"var(--level)","Level AOUT","9a (D33)","Level signal (route it around the board's edge)","left");
+  wire(P(48,"a"),P(3,"a"),"var(--buzz)","48a (buzzer +)","3a (D13)","Buzzer signal",-40);
+  wire(P(49,"a"),P(49,"T-"),K,"49a (buzzer −)","Top − rail","Ground",-8);
+  wire(AD,P(55,"b"),R,"Adapter +5 V","55b","Servo power (not the breadboard rail)",0);
+  wire(AD,P(56,"b"),K,"Adapter GND","56b","Servo ground",0);
+  wire(P(56,"a"),P(56,"T-"),K,"56a","Top − rail","Shares ground with the ESP32",-8);
+  wire(SV,P(55,"a"),R,"Servo red","55a","Servo power",0);
+  wire(SV,P(56,"c"),K,"Servo brown","56c","Servo ground",0);
+  wire(SV,P(7,"b"),"var(--servo)","Servo orange","7b (D26)","Servo signal",0);
+
+  var boxes=[].slice.call(document.querySelectorAll("#checklist input")), prog=document.getElementById("progress");
+  function load(){try{return JSON.parse(localStorage.getItem("fs-wiring")||"{}")}catch(e){return {}}}
+  function save(s){try{localStorage.setItem("fs-wiring",JSON.stringify(s))}catch(e){}}
+  function render(){var n=0;boxes.forEach(function(b){b.parentNode.classList.toggle("done",b.checked);if(b.checked)n++;});prog.textContent="· "+n+" of "+boxes.length+" done";}
+  var st=load(); boxes.forEach(function(b){b.checked=!!st[b.id];b.addEventListener("change",function(){st[b.id]=b.checked;save(st);render();});});
+  render();
+})();
+</script>
+
+</body></html>

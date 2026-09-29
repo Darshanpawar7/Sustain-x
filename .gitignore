@@ -93,3 +93,16 @@ pip-delete-this-directory.txt
 
 # CSV exports (local copies)
 *.csv
+
+# Firmware secrets: copy secrets.example.h to secrets.h and fill it in
+ESP32_Code/**/secrets.h
+
+# Local tool downloads (install arduino-cli from arduino.cc instead)
+.tools/
+
+# Generated at deploy time by scripts/netlify-build.mjs
+Web_Dashboard/_headers
+
+# Test output
+test-results/
+playwright-report/

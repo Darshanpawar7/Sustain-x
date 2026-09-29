@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard:
+    name: Dashboard unit and browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  database:
+    name: Database migrations and permissions
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run test:db
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+  firmware-logic:
+    name: Firmware logic tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run on the host (C++11, warnings are errors)
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -I ESP32_Code/water_monitoring \
+            tests/firmware/flowstate_logic_test.cpp -o flowstate_logic_test
+          ./flowstate_logic_test
+
+  firmware-build:
+    name: Firmware compiles for the ESP32
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the example secrets for the compile check
+        run: cp ESP32_Code/water_monitoring/secrets.example.h ESP32_Code/water_monitoring/secrets.h
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:esp32
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+              version: 3.3.12
+          sketch-paths: |
+            - ESP32_Code/water_monitoring
+          libraries: |
+            - name: ArduinoJson
+              version: 7.4.3
+            - name: RTClib
+              version: 2.1.4
+            - name: ESP32Servo
+              version: 3.2.1
+            - name: DHT sensor library
+              version: 1.4.7
+            - name: Adafruit Unified Sensor
+              version: 1.1.15
+          enable-warnings-report: true
