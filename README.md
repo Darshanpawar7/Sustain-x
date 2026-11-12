@@ -18,9 +18,9 @@ when it is used, whether today is unusual, whether water flows at night, and wha
 
 | Fact | Source |
 | --- | --- |
-| The leaks in a typical home waste about 35,000 L (9,300–10,000 US gallons) a year | [US EPA WaterSense, Fix a Leak Week](https://www.epa.gov/watersense/fix-leak-week) |
+| The leaks in an average home waste more than 9,300 US gallons (about 35,000 L) a year | [US EPA WaterSense, Fix a Leak Week](https://www.epa.gov/watersense/fix-leak-week) |
 | One tap dripping once a second wastes over 11,000 L (3,000 gallons) a year | [US EPA WaterSense](https://www.epa.gov/watersense/fix-leak-week) |
-| About 600 million people in India face high to extreme water stress | NITI Aayog, *Composite Water Management Index* (2018), [coverage](https://thewire.in/environment/water-crisis-india-niti-aayog) |
+| NITI Aayog warned that India faces the worst water crisis in its history, likely to get worse | NITI Aayog, *Composite Water Management Index* (2018), reported by [The Wire](https://thewire.in/environment/water-crisis-india-niti-aayog) |
 
 Hidden leaks are silent. A cracked joint, a dripping tap or a running cistern rarely shows on a monthly
 bill until a lot of water is gone. Two flow sensors on the same pipe find the difference within a minute.
