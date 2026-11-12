@@ -121,6 +121,8 @@
 
     function applyStoredReading(row, arrived) {
         if (!row || lib.isFutureReading(row.timestamp, Date.now())) return;
+        // A check that finds the reading already shown changes nothing (and lights nothing up).
+        if (state.latestStored && row.id !== undefined && row.id === state.latestStored.id) return;
         state.latestStored = lib.newerReading(state.latestStored, row, Date.now());
         state.dbReadings = lib.trimLiveWindow([...state.dbReadings, row], Date.now(), config.settings.liveWindowMs);
         applyReading(row, arrived);
@@ -257,7 +259,7 @@
     function tick() {
         const now = Date.now();
         if (state.connected && !state.sample) {
-            if (!state.realtime.readings && now - state.lastReadingPollMs >= config.settings.latestReadingPollMs) {
+            if (lib.readingPollDue(now, state.lastReadingPollMs, Boolean(state.realtime.readings), config.settings)) {
                 state.lastReadingPollMs = now;
                 loadLatestReading(true);
             }

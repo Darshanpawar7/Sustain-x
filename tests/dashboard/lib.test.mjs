@@ -84,6 +84,14 @@ test('future-dated readings never replace real ones', () => {
   assert.equal(lib.newerReading(null, real, NOW), real);
 });
 
+test('the newest reading is re-read every 10 s without live updates, and every 30 s with them', () => {
+  const settings = { latestReadingPollMs: 10000, realtimeSafetyPollMs: 30000 };
+  assert.equal(lib.readingPollDue(NOW, NOW - 11000, false, settings), true);
+  assert.equal(lib.readingPollDue(NOW, NOW - 11000, true, settings), false);
+  assert.equal(lib.readingPollDue(NOW, NOW - 30000, true, settings), true);
+  assert.equal(lib.readingPollDue(NOW, 0, true, settings), true); // the first check runs at once
+});
+
 test('the live chart keeps the last window of readings, oldest first, without repeats', () => {
   const at = (secondsAgo, id) => ({ id, timestamp: new Date(NOW - secondsAgo * 1000).toISOString() });
   const kept = lib.trimLiveWindow([at(10, 3), at(1000, 1), at(20, 2), at(10, 3), { id: 9, timestamp: '2099-01-01T00:00:00Z' }], NOW, 900000);

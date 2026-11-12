@@ -45,6 +45,7 @@
         liveWindowMs: 15 * 60000,
         defaultTariffPerKiloliter: 20,     // rupees per 1,000 L; each viewer can change it
         latestReadingPollMs: 10000,        // only when live updates are unavailable
+        realtimeSafetyPollMs: 30000,       // live updates can miss an insert (e.g. one made as they connect)
         alertsPollMs: 30000,
         summaryRefreshMs: 30000,
         maxAlerts: 50

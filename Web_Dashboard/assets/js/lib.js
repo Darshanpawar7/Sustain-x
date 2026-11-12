@@ -210,6 +210,22 @@
             .sort((a, b) => toTime(a.timestamp) - toTime(b.timestamp));
     }
 
+    /**
+     * Whether to re-read the newest stored reading now. Without live updates the
+     * page checks every latestReadingPollMs; with them it still checks every
+     * realtimeSafetyPollMs, because a live update can be missed (for example, a
+     * reading saved while the page was still connecting).
+     * @param {number} nowMs
+     * @param {number} lastPollMs when the last check ran (0 = never)
+     * @param {boolean} hasLiveUpdates
+     * @param {{latestReadingPollMs: number, realtimeSafetyPollMs: number}} settings
+     * @returns {boolean}
+     */
+    function readingPollDue(nowMs, lastPollMs, hasLiveUpdates, settings) {
+        const everyMs = hasLiveUpdates ? settings.realtimeSafetyPollMs : settings.latestReadingPollMs;
+        return nowMs - lastPollMs >= everyMs;
+    }
+
     // ---------------------------------------------------------------------
     // Alerts
     // ---------------------------------------------------------------------
@@ -717,6 +733,7 @@
         classifyFreshness,
         formatAge,
         trimLiveWindow,
+        readingPollDue,
         alertName,
         alertGroup,
         alertKey,
