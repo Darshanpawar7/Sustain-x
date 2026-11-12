@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="FlowState: live water flow, leak detection and valve control for an ESP32 water monitor.">
-    <title>FlowState</title>
-    <link rel="icon" href="data:,">
+    <meta name="description" content="FlowState by Team 10: live readings from two flow sensors on an ESP32 over MQTT and HTTPS, leak detection and water-use analysis.">
+    <meta name="color-scheme" content="light dark">
+    <title>FlowState · Team 10</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3C11 10 7 15 7 20a9 9 0 0 0 18 0c0-5-4-10-9-17z' fill='%231a6fd1'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"
             integrity="sha384-9MhbyIRcBVQiiC7FSd7T38oJNj2Zh+EfxS7/vjhBi4OOT78NlHSnzM31EZRWR1LZ"
@@ -16,560 +17,586 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"
             integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
             crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mqtt@5.15.2/dist/mqtt.min.js"
+            integrity="sha384-haZiwxTLortiFcYMBEEE1+8ayC+o18YtuwHZv+4WQHoPaLzRjwOV6h7Vva5iLSCZ"
+            crossorigin="anonymous"></script>
     <script defer src="assets/env.js"></script>
     <script defer src="assets/js/lib.js"></script>
     <script defer src="assets/js/config.js"></script>
     <script defer src="assets/js/api.js"></script>
+    <script defer src="assets/js/sample.js"></script>
+    <script defer src="assets/js/mqttlink.js"></script>
     <script defer src="assets/js/ui.js"></script>
     <script defer src="assets/js/charts.js"></script>
-    <script defer src="assets/js/alerts.js"></script>
     <script defer src="assets/js/live.js"></script>
+    <script defer src="assets/js/analysis.js"></script>
+    <script defer src="assets/js/alerts.js"></script>
     <script defer src="assets/js/valve.js"></script>
-    <script defer src="assets/js/insights.js"></script>
+    <script defer src="assets/js/perf.js"></script>
     <script defer src="assets/js/app.js"></script>
 </head>
 <body>
-    <div class="bg-orb bg-orb-one"></div>
-    <div class="bg-orb bg-orb-two"></div>
-    <div class="bg-grid"></div>
+    <a class="skip-link" href="#live">Skip to live readings</a>
 
-    <!-- Animated water background -->
-    <div class="water-background" aria-hidden="true">
-        <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-        viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
-            <defs>
-                <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
-            </defs>
-            <g class="parallax">
-                <use xlink:href="#gentle-wave" x="48" y="0" fill="rgba(30, 136, 229, 0.1)" />
-                <use xlink:href="#gentle-wave" x="48" y="3" fill="rgba(30, 136, 229, 0.2)" />
-                <use xlink:href="#gentle-wave" x="48" y="5" fill="rgba(30, 136, 229, 0.3)" />
-                <use xlink:href="#gentle-wave" x="48" y="7" fill="rgba(30, 136, 229, 0.4)" />
-            </g>
-        </svg>
-    </div>
-
-    <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <div class="header-title-wrap">
-                    <p class="eyebrow">Smart Utilities Control Center</p>
-                    <h1>FlowState</h1>
-                    <p class="header-subtitle">Live flow, leak risk, humidity comfort, and infrastructure health in one place.</p>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="#top" aria-label="FlowState, Team 10">
+                <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M16 3C11 10 7 15 7 20a9 9 0 0 0 18 0c0-5-4-10-9-17z"/>
+                    <path class="brand-mark-wave" d="M10.5 21.5c1.8 1.2 3.6 1.2 5.5 0s3.7-1.2 5.5 0"/>
+                </svg>
+                <span class="brand-name">FlowState</span>
+                <span class="team-badge" id="teamBadge">Team 10</span>
+            </a>
+            <nav class="topnav" aria-label="Sections">
+                <a href="#live">Live</a>
+                <a href="#analysis">Analysis</a>
+                <a href="#performance">Performance</a>
+                <a href="#how">How it works</a>
+            </nav>
+            <div class="topbar-status">
+                <div class="status-pill" id="systemStatus" role="status" data-state="connecting">
+                    <span class="status-dot" aria-hidden="true"></span><span class="status-text">Connecting…</span>
                 </div>
-                <div class="header-status">
-                    <div class="status-badge" id="systemStatus" role="status"><span class="status-dot connecting"></span>Connecting…</div>
-                    <label class="critical-mobile-toggle" for="mobileCriticalOnly">
-                        <input type="checkbox" id="mobileCriticalOnly">
-                        <span>Critical-only mobile</span>
-                    </label>
-                    <label class="demo-pass-toggle" for="judgesDemoOnePass">
-                        <input type="checkbox" id="judgesDemoOnePass">
-                        <span>One-pass</span>
-                    </label>
-                    <button type="button" id="judgesDemoToggle" class="demo-toggle">▶ Judges Demo Mode</button>
-                    <div class="last-update" id="judgesDemoStatus">Demo: Manual</div>
-                    <button type="button" id="themeToggle" class="theme-toggle">Switch to Night Mode</button>
-                    <div class="last-update" id="lastUpdate">Last reading: --</div>
-                </div>
+                <span class="last-reading" id="lastUpdate">Last reading: --</span>
+                <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark theme">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+                </button>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <div id="staleBanner" class="stale-banner" role="status" aria-live="polite" hidden></div>
-
-        <section class="pulse-strip">
-            <div class="pulse-item">
-                <span class="pulse-label">Anomaly Model</span>
-                <span class="pulse-value" id="anomalyStatus">Learning</span>
-            </div>
-            <div class="pulse-item">
-                <span class="pulse-label">Sync Mode</span>
-                <span class="pulse-value" id="syncMode">Connecting…</span>
-            </div>
-            <div class="pulse-item">
-                <span class="pulse-label">Night Watch</span>
-                <span class="pulse-value">2 AM - 5 AM, device local time</span>
-            </div>
+    <main id="top">
+        <section class="intro" aria-labelledby="projectTitle">
+            <p class="kicker"><span id="teamKicker">Team 10</span> · IoT Mini Project</p>
+            <h1 id="projectTitle">IoT Water Leak Detection and Consumption Analytics Using Dual Flow Sensors</h1>
+            <p class="lede">Two flow sensors sit on the same pipe: one where water leaves the tank, one at the tap. Water that leaves the tank but never reaches the tap is a leak. FlowState measures it, raises the alarm, closes the valve, and shows when, how much and at what cost water is used.</p>
+            <ul class="facts" aria-label="Why it matters">
+                <li><strong>~35,000 L</strong><span>wasted a year by the leaks in a typical home</span><a href="https://www.epa.gov/watersense/fix-leak-week" rel="noopener" target="_blank">US EPA WaterSense</a></li>
+                <li><strong>11,000 L+</strong><span>a year from one tap dripping once a second</span><a href="https://www.epa.gov/watersense/fix-leak-week" rel="noopener" target="_blank">US EPA WaterSense</a></li>
+                <li><strong>600 million</strong><span>people in India face high to extreme water stress</span><a href="https://thewire.in/environment/water-crisis-india-niti-aayog" rel="noopener" target="_blank">NITI Aayog CWMI, 2018</a></li>
+            </ul>
+            <p class="lede lede-small">Hidden leaks are silent: a slow drip or a running cistern rarely shows on a monthly bill until a lot of water is gone. Measuring flow at two points finds them within a minute.</p>
         </section>
 
-        <section class="card sustainability-lab-section">
-            <div class="sustainability-head">
-                <div>
-                    <p class="sustainability-kicker">Competition Upgrade</p>
-                    <h2>🌍 Sustainability Impact Lab</h2>
-                    <p>Built to solve real-world water waste with measurable outcomes, technical proof, and a clear demo storyline.</p>
-                </div>
-                <div class="sustainability-readiness" id="impactReadiness">Readiness: Gathering baseline data</div>
+        <div class="banner-stack">
+            <div class="banner" id="statusBanner" role="status" aria-live="polite" hidden>
+                <p id="statusBannerText"></p>
+                <button type="button" class="btn btn-small" id="sampleStartBtn" hidden>Preview with sample data</button>
             </div>
-
-            <div class="sustainability-kpis">
-                <article class="sustainability-kpi">
-                    <span class="kpi-label">Leak Reduction Opportunity</span>
-                    <span class="kpi-value" id="impactOpportunityLiters">0.0 L/day</span>
-                    <span class="kpi-note">Water lost in the last 24 hours beyond the normal 5% allowance.</span>
-                </article>
-                <article class="sustainability-kpi">
-                    <span class="kpi-label">Projected Monthly Water Savings</span>
-                    <span class="kpi-value" id="impactMonthlySavings">0.0 L/month</span>
-                    <span class="kpi-note">30-day projection if that loss is fixed.</span>
-                </article>
-                <article class="sustainability-kpi">
-                    <span class="kpi-label">Estimated CO2e Avoided</span>
-                    <span class="kpi-value" id="impactCo2Saved">0.00 kg/month</span>
-                    <span class="kpi-note">Uses a water treatment + pumping intensity factor.</span>
-                </article>
-                <article class="sustainability-kpi">
-                    <span class="kpi-label">People-Level Water Equivalent</span>
-                    <span class="kpi-value" id="impactPeopleSupported">0.0 people/day</span>
-                    <span class="kpi-note">Based on 50 L/day per person basic water access benchmark.</span>
-                </article>
-            </div>
-
-            <div class="sustainability-grid">
-                <article class="criterion-card" id="demoProblemCard">
-                    <h3>Problem Understanding <span>15 pts</span></h3>
-                    <p>Tracks leak percentage, anomaly state, and critical windows to show the exact water-loss problem in context.</p>
-                </article>
-                <article class="criterion-card" id="demoInnovationCard">
-                    <h3>Innovation <span>20 pts</span></h3>
-                    <p>Dual flow verification + anomaly learning + automatic valve response combines prevention and intelligence.</p>
-                </article>
-                <article class="criterion-card" id="demoTechCard">
-                    <h3>Technical Implementation <span>20 pts</span></h3>
-                    <p id="criterionTechStatus">Live sensor stream, Supabase ingestion, and real-time dashboard evidence are active.</p>
-                </article>
-                <article class="criterion-card" id="demoImpactCard">
-                    <h3>Sustainability Impact <span>15 pts</span></h3>
-                    <p id="criterionImpactStatus">Impact metrics update from real readings to quantify water and emissions benefits.</p>
-                </article>
-                <article class="criterion-card" id="demoFeasibilityCard">
-                    <h3>Feasibility &amp; Scalability <span>15 pts</span></h3>
-                    <p id="criterionFeasibilityStatus">Built with low-cost sensors, cloud storage, and repeatable deployment for city-scale rollout.</p>
-                </article>
-                <article class="criterion-card" id="demoPresentationCard">
-                    <h3>Presentation &amp; Demo <span>10 pts</span></h3>
-                    <p>Use this flow: problem signal, intervention, quantified impact, then pilot scaling path.</p>
-                </article>
-                <article class="criterion-card" id="demoUxCard">
-                    <h3>UI/UX</h3>
-                    <p>High-contrast status cards, visual tanks, and chart timeframes improve comprehension in under one minute.</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="card intelligence-section">
-            <div class="intelligence-head">
-                <div>
-                    <p class="intelligence-kicker">AquaMind Feature Pack</p>
-                    <h2>🧠 Impact Intelligence Studio</h2>
-                    <p>Priority scoring, what-if impact simulation, and recommendations from your live ESP32 readings. These are rule-based estimates, not a trained model.</p>
-                </div>
-                <div class="intelligence-status" id="intelEngineStatus">Waiting for a live reading</div>
-            </div>
-
-            <div class="intelligence-grid">
-                <article class="intel-card">
-                    <h3>Priority &amp; Failure Risk</h3>
-                    <div class="intel-risk-row">
-                        <span class="intel-badge intel-badge-muted" id="aiPriorityLevel">--</span>
-                        <span class="intel-score" id="aiPriorityScore">0 / 100</span>
-                    </div>
-                    <div class="intel-metric">
-                        <span>Estimated failure risk</span>
-                        <strong id="aiFailureProbability">0.0%</strong>
-                    </div>
-                    <div class="intel-metric">
-                        <span>Immediate Action</span>
-                        <strong id="aiImmediateAction">No</strong>
-                    </div>
-                    <p class="intel-note" id="aiRiskNarrative">Collecting live flow imbalance to estimate risk.</p>
-                </article>
-
-                <article class="intel-card">
-                    <h3>What-If Impact Simulator</h3>
-                    <div class="intel-controls">
-                        <label>
-                            Horizon (days)
-                            <input id="impactHorizonDays" type="number" min="1" max="365" value="30">
-                        </label>
-                        <label>
-                            Repair Cost (USD)
-                            <input id="impactRepairCost" type="number" min="1" step="10" value="800">
-                        </label>
-                        <button type="button" class="btn intel-run-btn" id="runImpactSimulationBtn">Analyze Impact</button>
-                    </div>
-                    <div class="intel-sim-grid">
-                        <div>
-                            <span>Ignore: Water Loss</span>
-                            <strong id="simIgnoreLoss">0 L</strong>
-                        </div>
-                        <div>
-                            <span>Ignore: Financial Cost</span>
-                            <strong id="simIgnoreCost">$0.00</strong>
-                        </div>
-                        <div>
-                            <span>Repair: Prevented Water</span>
-                            <strong id="simRepairPrevented">0 L</strong>
-                        </div>
-                        <div>
-                            <span>Projected Savings</span>
-                            <strong id="simSavings">$0.00</strong>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="intel-card">
-                    <h3>Recommendation Engine</h3>
-                    <p class="intel-recommendation" id="aiRecommendationText">No recommendation yet. Waiting for a live reading.</p>
-                    <ul class="intel-insights" id="aiInsightsList">
-                        <li>Live insights will appear here.</li>
-                    </ul>
-                </article>
-            </div>
-        </section>
-
-        <div class="dashboard-grid">
-            <div class="monitoring-row">
-                <section class="card tank-section">
-                    <h2>🏢 Tank Level</h2>
-                    <div class="tank-container">
-                        <div class="water-tank">
-                            <div class="liquid">
-                                <svg class="water" viewBox="0 0 200 100" aria-hidden="true">
-                                    <defs>
-                                        <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                            <stop offset="0" stop-color="#29ABE2"/>
-                                            <stop offset="0.1643" stop-color="#28A6E3"/>
-                                            <stop offset="0.3574" stop-color="#2496E6"/>
-                                            <stop offset="0.5431" stop-color="#1E7DEA"/>
-                                            <stop offset="0.7168" stop-color="#1559F0"/>
-                                            <stop offset="0.874" stop-color="#0B2CF7"/>
-                                            <stop offset="1" stop-color="#0000FF"/>
-                                        </linearGradient>
-                                    </defs>
-                                    <path fill="url(#waterGradient)" d="M 0,0 v 100 h 200 v -100 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5 c -10,0 -15,5 -25,5 c -10,0 -15,-5 -25,-5"/>
-                                </svg>
-                            </div>
-                            <div class="indicator" data-value="75"></div>
-                            <div class="indicator" data-value="50"></div>
-                            <div class="indicator" data-value="25"></div>
-                            <div class="label" id="tankLabel">--%</div>
-                        </div>
-                        <div class="tank-info">
-                            <div class="tank-stat">
-                                <span class="label">Level:</span>
-                                <span class="value" id="tankLevel">-- cm</span>
-                            </div>
-                            <div class="tank-stat">
-                                <span class="label">Capacity:</span>
-                                <span class="value" id="tankCapacity">100.0 cm</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="card flow-section">
-                    <h2>⚡ Flow Rates</h2>
-                    <div class="flow-grid">
-                        <div class="flow-item">
-                            <div class="flow-icon" aria-hidden="true">🔵</div>
-                            <div class="flow-label">Sensor 1<br><small>Tank Outlet</small></div>
-                            <div class="flow-value" id="flow1">0.00 L/min</div>
-                        </div>
-                        <div class="flow-item">
-                            <div class="flow-icon" aria-hidden="true">🟢</div>
-                            <div class="flow-label">Sensor 2<br><small>Output Tap</small></div>
-                            <div class="flow-value" id="flow2">0.00 L/min</div>
-                        </div>
-                    </div>
-                    <div class="flow-comparison">
-                        <div class="comparison-bar">
-                            <div class="bar-item">
-                                <span class="bar-label">Flow 1</span>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="progressFlow1"></div>
-                                </div>
-                            </div>
-                            <div class="bar-item">
-                                <span class="bar-label">Flow 2</span>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="progressFlow2"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div class="bottom-row">
-                <section class="card leak-section">
-                    <h2>🚨 Leak Detection</h2>
-                    <div class="leak-display">
-                        <div class="leak-percentage">
-                            <div class="percentage-circle" id="lossPercentageCircle">
-                                <svg viewBox="0 0 120 120" aria-hidden="true">
-                                    <circle cx="60" cy="60" r="55" class="circle-bg"/>
-                                    <circle cx="60" cy="60" r="55" class="circle-progress" id="circleProgress"/>
-                                </svg>
-                                <div class="percentage-text">
-                                    <span id="lossPercentage">0</span>%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="leak-status">
-                            <div class="status-item">
-                                <span class="label">Status:</span>
-                                <span class="badge normal" id="leakStatus">NORMAL ✓</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="label">Loss Category:</span>
-                                <div class="categories">
-                                    <div class="category normal-cat">
-                                        <span class="range">&lt;5%</span>
-                                        <span class="text">Normal</span>
-                                    </div>
-                                    <div class="category warning-cat">
-                                        <span class="range">5-15%</span>
-                                        <span class="text">Warning</span>
-                                    </div>
-                                    <div class="category critical-cat">
-                                        <span class="range">&gt;15%</span>
-                                        <span class="text">Critical</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="card controls-section">
-                    <h2>⚙️ System Controls</h2>
-                    <div class="controls-grid">
-                        <div class="control-item">
-                            <h3>Shut-off Valve</h3>
-                            <div class="valve-status">
-                                <span class="valve-indicator" id="valveIndicator" aria-hidden="true">●</span>
-                                <span class="valve-state" id="valveState">--</span>
-                            </div>
-                            <div class="button-group">
-                                <button type="button" class="btn btn-open" id="valveOpenBtn">Open</button>
-                                <button type="button" class="btn btn-close" id="valveCloseBtn">Close</button>
-                            </div>
-                            <p class="valve-command-status" id="valveCommandStatus" role="status" aria-live="polite" hidden></p>
-                            <p class="control-hint">Needs the valve control key (Settings). The position shown always comes from the device.</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="card statistics-section">
-                    <h2>📊 Today</h2>
-                    <div class="stats-content">
-                        <div class="stat-item">
-                            <span class="stat-label">Water used (sensor 1)</span>
-                            <span class="stat-value" id="dailyTotal">-- L</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Est. loss</span>
-                            <span class="stat-value" id="estimatedLoss">-- L</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Cost (<span id="costPerLiterLabel">$0.05</span> per L)</span>
-                            <span class="stat-value" id="estimatedCost">$--</span>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="card humidity-section">
-                    <h2>🌫️ Ambient Humidity</h2>
-                    <div class="humidity-content">
-                        <div class="humidity-aura humidity-state-muted" id="humidityAura">
-                            <svg class="humidity-orbit" viewBox="0 0 140 140" aria-hidden="true">
-                                <circle class="orbit-track" cx="70" cy="70" r="54"></circle>
-                                <circle class="orbit-progress" id="humidityOrbitProgress" cx="70" cy="70" r="54"></circle>
-                            </svg>
-                            <div class="humidity-core">
-                                <span class="humidity-value" id="humidityValue">N/A</span>
-                                <span class="humidity-mini-label" id="humidityAuraLabel">NO DATA</span>
-                            </div>
-                            <span class="humidity-spark humidity-spark-1" aria-hidden="true"></span>
-                            <span class="humidity-spark humidity-spark-2" aria-hidden="true"></span>
-                            <span class="humidity-spark humidity-spark-3" aria-hidden="true"></span>
-                        </div>
-                        <div class="humidity-info">
-                            <div class="humidity-main">
-                                <span class="humidity-trend" id="humidityTrend">Waiting for sensor data…</span>
-                            </div>
-                            <div class="tank-stat">
-                                <span class="label">Comfort Band:</span>
-                                <span class="value">30% - 70%</span>
-                            </div>
-                            <div class="humidity-trend-card">
-                                <div class="humidity-comfort humidity-comfort-muted" id="humidityComfortBadge">NO DATA</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="card alerts-section">
-                    <h2>🔔 Recent Alerts</h2>
-                    <div class="alerts-toolbar">
-                        <div class="alerts-tabs" id="alertsTabs">
-                            <button type="button" class="alerts-tab active" data-severity="all" aria-pressed="true">All <span id="countAll">0</span></button>
-                            <button type="button" class="alerts-tab" data-severity="critical" aria-pressed="false">Critical <span id="countCritical">0</span></button>
-                            <button type="button" class="alerts-tab" data-severity="warning" aria-pressed="false">Warning <span id="countWarning">0</span></button>
-                            <button type="button" class="alerts-tab" data-severity="info" aria-pressed="false">Info <span id="countInfo">0</span></button>
-                        </div>
-                        <div class="alerts-ack-tabs" id="alertsAckTabs">
-                            <button type="button" class="alerts-ack-tab active" data-ack="open" aria-pressed="true">Open</button>
-                            <button type="button" class="alerts-ack-tab" data-ack="acknowledged" aria-pressed="false">Acknowledged</button>
-                            <button type="button" class="alerts-ack-tab" data-ack="all" aria-pressed="false">All states</button>
-                        </div>
-                        <div class="alerts-ack-summary" id="ackSummary">0 open</div>
-                        <input type="search" id="alertSearch" class="alerts-search" placeholder="Search alerts..." aria-label="Search alerts">
-                    </div>
-                    <div class="alerts-container" id="alertsContainer" aria-live="polite">
-                        <div class="alert-item empty">No alerts yet.</div>
-                    </div>
-                </section>
+            <div class="banner banner-sample" id="sampleBanner" role="status" hidden>
+                <p><strong>Sample data.</strong> These are made-up readings to preview the dashboard, not readings from the ESP32.</p>
+                <button type="button" class="btn btn-small" id="sampleStopBtn">Show real data</button>
             </div>
         </div>
 
-        <section class="card analytics-section">
-            <h2>📊 Analytics &amp; Trends</h2>
-            <div class="analytics-grid">
-                <div class="chart-container">
-                    <div class="chart-head">
-                        <h3 data-chart-title="flow">Flow rate (1h)</h3>
-                        <div class="timeframe-tabs" data-chart="flow">
-                            <button type="button" class="timeframe-tab" data-range="15m">15m</button>
-                            <button type="button" class="timeframe-tab" data-range="1h">1h</button>
-                            <button type="button" class="timeframe-tab" data-range="6h">6h</button>
-                            <button type="button" class="timeframe-tab" data-range="24h">24h</button>
-                        </div>
-                    </div>
-                    <p class="chart-empty" data-chart-empty="flow" hidden></p>
-                    <canvas id="flowChart" aria-label="Flow rate chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-head">
-                        <h3 data-chart-title="volume">Water volume (1h)</h3>
-                        <div class="timeframe-tabs" data-chart="volume">
-                            <button type="button" class="timeframe-tab" data-range="15m">15m</button>
-                            <button type="button" class="timeframe-tab" data-range="1h">1h</button>
-                            <button type="button" class="timeframe-tab" data-range="6h">6h</button>
-                            <button type="button" class="timeframe-tab" data-range="24h">24h</button>
-                        </div>
-                    </div>
-                    <p class="chart-empty" data-chart-empty="volume" hidden></p>
-                    <canvas id="volumeChart" aria-label="Water volume chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-head">
-                        <h3 data-chart-title="hourly">Usage by hour of day (24h)</h3>
-                        <div class="timeframe-tabs" data-chart="hourly">
-                            <button type="button" class="timeframe-tab" data-range="15m">15m</button>
-                            <button type="button" class="timeframe-tab" data-range="1h">1h</button>
-                            <button type="button" class="timeframe-tab" data-range="6h">6h</button>
-                            <button type="button" class="timeframe-tab" data-range="24h">24h</button>
-                        </div>
-                    </div>
-                    <p class="chart-empty" data-chart-empty="hourly" hidden></p>
-                    <canvas id="hourlyChart" aria-label="Usage by hour of day chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-head">
-                        <h3 data-chart-title="loss">Loss percentage (1h)</h3>
-                        <div class="timeframe-tabs" data-chart="loss">
-                            <button type="button" class="timeframe-tab" data-range="15m">15m</button>
-                            <button type="button" class="timeframe-tab" data-range="1h">1h</button>
-                            <button type="button" class="timeframe-tab" data-range="6h">6h</button>
-                            <button type="button" class="timeframe-tab" data-range="24h">24h</button>
-                        </div>
-                    </div>
-                    <p class="chart-empty" data-chart-empty="loss" hidden></p>
-                    <canvas id="lossChart" aria-label="Loss percentage chart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-head">
-                        <h3 data-chart-title="humidity">Humidity (1h)</h3>
-                        <div class="timeframe-tabs" data-chart="humidity">
-                            <button type="button" class="timeframe-tab" data-range="15m">15m</button>
-                            <button type="button" class="timeframe-tab" data-range="1h">1h</button>
-                            <button type="button" class="timeframe-tab" data-range="6h">6h</button>
-                            <button type="button" class="timeframe-tab" data-range="24h">24h</button>
-                        </div>
-                    </div>
-                    <p class="chart-empty" data-chart-empty="humidity" hidden></p>
-                    <canvas id="humidityChart" aria-label="Humidity chart"></canvas>
-                </div>
+        <section class="pipeline" aria-labelledby="pipelineTitle">
+            <div class="section-head">
+                <h2 id="pipelineTitle">The IoT pipeline</h2>
+                <p>Each reading passes through all five stages. They light up as a new one arrives.</p>
             </div>
+            <ol class="stages" id="pipelineStages">
+                <li class="stage" data-stage="sense">
+                    <span class="stage-num" aria-hidden="true">1</span>
+                    <h3>Sense</h3>
+                    <p class="stage-what">The ESP32 reads both flow sensors, the tank level and the DHT22 every second.</p>
+                    <p class="stage-live" id="stageSense">Waiting for a reading</p>
+                </li>
+                <li class="stage" data-stage="ingest">
+                    <span class="stage-num" aria-hidden="true">2</span>
+                    <h3>Ingest</h3>
+                    <p class="stage-what">Wi-Fi: live MQTT messages every 2 s, and an HTTPS upload every 10 s.</p>
+                    <p class="stage-live" id="stageIngest">--</p>
+                </li>
+                <li class="stage" data-stage="process">
+                    <span class="stage-num" aria-hidden="true">3</span>
+                    <h3>Process</h3>
+                    <p class="stage-what">On the ESP32: pulses become litres, the two sensors are compared over 60 s, and a critical leak closes the valve.</p>
+                    <p class="stage-live" id="stageProcess">--</p>
+                </li>
+                <li class="stage" data-stage="store">
+                    <span class="stage-num" aria-hidden="true">4</span>
+                    <h3>Store</h3>
+                    <p class="stage-what">Supabase (PostgreSQL) keeps every reading and alert, with checks on every value.</p>
+                    <p class="stage-live" id="stageStore">--</p>
+                </li>
+                <li class="stage" data-stage="analyze">
+                    <span class="stage-num" aria-hidden="true">5</span>
+                    <h3>Analyze</h3>
+                    <p class="stage-what">This page turns the stored readings into answers: loss, patterns, unusual use, night flow, cost.</p>
+                    <p class="stage-live" id="stageAnalyze">--</p>
+                </li>
+            </ol>
         </section>
 
-        <section class="card export-section">
-            <h2>💾 Export Data</h2>
-            <div class="export-container">
-                <div class="export-info">
-                    <p>Download readings from the database for the period you choose.</p>
-                    <div class="export-stats">
-                        <span class="stat-item">📈 <strong id="exportRecordCount">0</strong> readings in the last 24 h</span>
-                        <span class="stat-item">⚠️ <strong id="exportAlertCount">0</strong> recent alerts</span>
+        <section class="live" id="live" aria-labelledby="liveTitle">
+            <div class="section-head">
+                <h2 id="liveTitle">Live from the ESP32</h2>
+                <p id="liveSubtitle">Values change the moment a new reading arrives.</p>
+            </div>
+
+            <div class="live-grid">
+                <article class="tile tile-flow" aria-labelledby="flowTitle">
+                    <h3 id="flowTitle">Flow: tank outlet vs tap</h3>
+                    <div class="flow-readouts">
+                        <div class="readout readout-s1">
+                            <span class="readout-label"><span class="swatch swatch-s1" aria-hidden="true"></span>Sensor 1 · tank outlet</span>
+                            <span class="readout-value"><span id="flow1">--</span><span class="unit">L/min</span></span>
+                        </div>
+                        <div class="readout readout-s2">
+                            <span class="readout-label"><span class="swatch swatch-s2" aria-hidden="true"></span>Sensor 2 · tap</span>
+                            <span class="readout-value"><span id="flow2">--</span><span class="unit">L/min</span></span>
+                        </div>
+                        <div class="readout readout-gap">
+                            <span class="readout-label">Not reaching the tap</span>
+                            <span class="readout-value"><span id="flowGap">--</span><span class="unit">L/min</span></span>
+                        </div>
                     </div>
-                </div>
-                <div class="export-buttons">
-                    <label class="export-range-label" for="exportRange">
-                        Period
-                        <select id="exportRange" class="export-range">
-                            <option value="1h">Last hour</option>
-                            <option value="6h">Last 6 hours</option>
-                            <option value="24h">Last 24 hours</option>
-                        </select>
+                    <div class="chart-box chart-live">
+                        <canvas id="liveChart" role="img" aria-label="Flow through sensor 1 and sensor 2 over the last 15 minutes"></canvas>
+                        <p class="chart-empty" data-chart-empty="live" hidden></p>
+                    </div>
+                    <p class="tile-note">Last 15 minutes. When the two lines split apart, water is going missing between the sensors.</p>
+                </article>
+
+                <article class="tile tile-leak" id="leakTile" data-status="none" aria-labelledby="leakTitle">
+                    <h3 id="leakTitle">Leak check</h3>
+                    <p class="loss-value"><span id="lossPercentage">--</span><span class="unit">%</span></p>
+                    <p class="leak-badge" id="leakStatus">No reading yet</p>
+                    <div class="scale" aria-hidden="true">
+                        <span class="scale-band scale-normal"></span>
+                        <span class="scale-band scale-warning"></span>
+                        <span class="scale-band scale-critical"></span>
+                        <span class="scale-marker" id="lossMarker"></span>
+                    </div>
+                    <div class="scale-labels" aria-hidden="true"><span>0</span><span>5%</span><span>15%</span><span>30%+</span></div>
+                    <p class="tile-note">Share of the water that left the tank in the last 60 s but did not reach the tap. Under 5% is normal, 5–15% is a warning, 15% or more is critical and closes the valve.</p>
+                </article>
+
+                <article class="tile tile-tank" aria-labelledby="tankTitle">
+                    <h3 id="tankTitle">Tank level</h3>
+                    <div class="tank-row">
+                        <div class="tank" aria-hidden="true">
+                            <div class="tank-fill" id="tankFill"></div>
+                            <span class="tank-mark tank-mark-75"></span>
+                            <span class="tank-mark tank-mark-50"></span>
+                            <span class="tank-mark tank-mark-25"></span>
+                        </div>
+                        <div>
+                            <p class="tank-readout"><span class="big-number" id="tankLabel">--</span><span class="unit">%</span></p>
+                            <p class="tile-note"><span id="tankLevel">--</span> cm of <span id="tankCapacity">100</span> cm</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="tile tile-valve" id="valveTile" data-open="unknown" aria-labelledby="valveTitle">
+                    <div class="valve-head">
+                        <div>
+                            <h3 id="valveTitle">Shut-off valve</h3>
+                            <p class="valve-state" id="valveState">--</p>
+                            <p class="valve-mode" id="valveMode">Automatic protection: --</p>
+                        </div>
+                        <div class="valve-actions" role="group" aria-label="Valve control">
+                            <button type="button" class="btn btn-small" id="valveOpenBtn" data-action="open">Open</button>
+                            <button type="button" class="btn btn-small" id="valveCloseBtn" data-action="close">Close</button>
+                            <button type="button" class="btn btn-small btn-quiet" id="valveAutoBtn" data-action="auto">Auto</button>
+                        </div>
+                    </div>
+                    <label class="valve-key" for="valveKeyInput">
+                        <span>Valve key</span>
+                        <input type="password" id="valveKeyInput" autocomplete="off" spellcheck="false" placeholder="The VALVE_COMMAND_KEY from secrets.h">
                     </label>
-                    <button type="button" class="export-btn csv-btn" id="exportCsvBtn">📥 Export as CSV</button>
-                    <button type="button" class="export-btn json-btn" id="exportJsonBtn">📥 Export as JSON</button>
+                    <p class="tile-note" id="valveKeyCheck">Commands are signed in this browser with the key (HMAC-SHA256) and sent over MQTT. The key itself is never sent.</p>
+                    <p class="valve-command-status" id="valveCommandStatus" role="status" aria-live="polite"></p>
+                    <p class="tile-note">The ESP32 also closes the valve by itself on a critical leak or 10 minutes of night flow. Serial Monitor: <code>VALVE_OPEN</code>, <code>VALVE_CLOSE</code>.</p>
+                </article>
+
+                <article class="tile tile-today" aria-labelledby="todayTitle">
+                    <h3 id="todayTitle">Used today</h3>
+                    <p class="today-value"><span class="big-number" id="dailyTotal">--</span><span class="unit">L</span></p>
+                    <p class="tile-note">Measured by sensor 1 since midnight. Cost so far: <strong id="todayCost">--</strong></p>
+                </article>
+
+                <article class="tile tile-air" aria-labelledby="airTitle">
+                    <h3 id="airTitle">Air near the pipes (DHT22)</h3>
+                    <p class="air-values"><span id="humidityValue">--</span></p>
+                    <p class="air-values air-values-small"><span id="temperatureValue">--</span></p>
+                    <p class="tile-note" id="airNote">Humidity and temperature, when the sketch uploads them.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="analysis" id="analysis" aria-labelledby="analysisTitle">
+            <div class="section-head">
+                <h2 id="analysisTitle">What the data tells us</h2>
+                <p>Five questions answered from the stored readings over the last 7 days (India time). <span id="analysisUpdated"></span></p>
+            </div>
+
+            <article class="question" id="q1" aria-labelledby="q1Title">
+                <div class="q-text">
+                    <p class="q-num">Q1</p>
+                    <h3 id="q1Title">Am I losing water, and how much?</h3>
+                    <p class="answer" id="q1Answer">Waiting for data</p>
+                    <p class="answer-detail" id="q1Detail"></p>
+                </div>
+                <div class="chart-box q-chart">
+                    <canvas id="lossChart" role="img" aria-label="Water that reached the tap and water lost, for each of the last 7 days"></canvas>
+                    <p class="chart-empty" data-chart-empty="loss" hidden></p>
+                </div>
+            </article>
+
+            <article class="question" id="q2" aria-labelledby="q2Title">
+                <div class="q-text">
+                    <p class="q-num">Q2</p>
+                    <h3 id="q2Title">When do I use the most water?</h3>
+                    <p class="answer" id="q2Answer">Waiting for data</p>
+                    <p class="answer-detail" id="q2Detail"></p>
+                </div>
+                <div class="chart-box q-chart">
+                    <canvas id="hourChart" role="img" aria-label="Litres used in each hour of the day: an average day and today"></canvas>
+                    <p class="chart-empty" data-chart-empty="hour" hidden></p>
+                </div>
+            </article>
+
+            <article class="question" id="q3" aria-labelledby="q3Title">
+                <div class="q-text">
+                    <p class="q-num">Q3</p>
+                    <h3 id="q3Title">Is today's use unusual?</h3>
+                    <p class="answer" id="q3Answer">Waiting for data</p>
+                    <p class="answer-detail" id="q3Detail"></p>
+                    <p class="device-verdict">The ESP32's own check (learns each hour for 3 days, then flags 1.5× normal): <strong id="anomalyStatus">--</strong></p>
+                </div>
+                <div class="chart-box q-chart">
+                    <canvas id="todayChart" role="img" aria-label="Water used so far today compared with a normal day"></canvas>
+                    <p class="chart-empty" data-chart-empty="today" hidden></p>
+                </div>
+            </article>
+
+            <article class="question" id="q4" aria-labelledby="q4Title">
+                <div class="q-text">
+                    <p class="q-num">Q4</p>
+                    <h3 id="q4Title">Is water flowing at night?</h3>
+                    <p class="answer" id="q4Answer">Waiting for data</p>
+                    <p class="answer-detail" id="q4Detail"></p>
+                </div>
+                <div class="nights" id="nightStrip" aria-label="Night-time flow between 2 and 5 AM for each of the last 7 nights"></div>
+            </article>
+
+            <article class="question" id="q5" aria-labelledby="q5Title">
+                <div class="q-text">
+                    <p class="q-num">Q5</p>
+                    <h3 id="q5Title">What does it cost?</h3>
+                    <p class="answer" id="q5Answer">Waiting for data</p>
+                    <p class="answer-detail" id="q5Detail"></p>
+                </div>
+                <div class="cost-panel">
+                    <dl class="cost-figures">
+                        <div><dt>Today so far</dt><dd id="costToday">--</dd></div>
+                        <div><dt>A month at this rate</dt><dd id="costMonth">--</dd></div>
+                        <div><dt>Lost to leaks, a month</dt><dd id="costLeaks">--</dd></div>
+                    </dl>
+                    <label class="tariff" for="tariffInput">
+                        <span>Water tariff (₹ per 1,000 L)</span>
+                        <input type="number" id="tariffInput" min="0" max="10000" step="0.5" inputmode="decimal">
+                    </label>
+                    <p class="tile-note">Change it to your local water board's rate. It is saved in this browser only.</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="perf" id="performance" aria-labelledby="perfTitle">
+            <div class="section-head">
+                <h2 id="perfTitle">Connectivity and performance</h2>
+                <p>Measured live: how fast and how reliably data gets from the ESP32 to this page over each protocol. <span id="perfNote"></span></p>
+            </div>
+            <div class="perf-grid">
+                <article class="metric" data-tone="neutral" id="metricMqtt">
+                    <h3>MQTT link</h3>
+                    <p class="metric-value" id="perfMqtt">--</p>
+                    <p class="metric-detail" id="perfMqttDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricRtt">
+                    <h3>Round trip (MQTT ping)</h3>
+                    <p class="metric-value" id="perfRtt">--</p>
+                    <p class="metric-detail" id="perfRttDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricDelivery">
+                    <h3>MQTT messages delivered</h3>
+                    <p class="metric-value" id="perfDelivery">--</p>
+                    <p class="metric-detail" id="perfDeliveryDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricTraffic">
+                    <h3>MQTT traffic</h3>
+                    <p class="metric-value" id="perfTraffic">--</p>
+                    <p class="metric-detail" id="perfTrafficDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricStorage">
+                    <h3>Readings stored (HTTPS)</h3>
+                    <p class="metric-value" id="perfStorage">--</p>
+                    <p class="metric-detail" id="perfStorageDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricUpload">
+                    <h3>HTTPS upload time</h3>
+                    <p class="metric-value" id="perfUpload">--</p>
+                    <p class="metric-detail" id="perfUploadDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricSignal">
+                    <h3>Wi-Fi signal</h3>
+                    <p class="metric-value" id="perfSignal">--</p>
+                    <p class="metric-detail" id="perfSignalDetail"></p>
+                </article>
+                <article class="metric" data-tone="neutral" id="metricUptime">
+                    <h3>ESP32 uptime</h3>
+                    <p class="metric-value" id="perfUptime">--</p>
+                    <p class="metric-detail" id="perfUptimeDetail"></p>
+                </article>
+            </div>
+
+            <div class="perf-lower">
+                <div class="chart-box perf-chart">
+                    <h3 class="chart-title">Reliability over the last 24 hours</h3>
+                    <canvas id="reliabilityChart" role="img" aria-label="Share of expected readings stored each hour, and the average HTTPS upload time"></canvas>
+                    <p class="chart-empty" data-chart-empty="reliability" hidden></p>
+                </div>
+                <div class="compare">
+                    <h3 class="chart-title">Why two protocols</h3>
+                    <table class="compare-table">
+                        <thead>
+                            <tr><th scope="col"></th><th scope="col">MQTT</th><th scope="col">HTTPS (REST)</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><th scope="row">Job</th><td>Live view, status, valve commands</td><td>Storing every reading for analysis</td></tr>
+                            <tr><th scope="row">How often</th><td>Every 2 s</td><td>Every 10 s</td></tr>
+                            <tr><th scope="row">Connection</th><td>One TLS link stays open; the broker pushes messages both ways</td><td>Request and response per reading (the TLS link is reused)</td></tr>
+                            <tr><th scope="row">Size of one reading</th><td id="cmpMqttSize">--</td><td id="cmpHttpsSize">--</td></tr>
+                            <tr><th scope="row">Measured delay</th><td id="cmpMqttDelay">--</td><td id="cmpHttpsDelay">--</td></tr>
+                            <tr><th scope="row">Delivered</th><td id="cmpMqttDelivered">--</td><td id="cmpHttpsDelivered">--</td></tr>
+                            <tr><th scope="row">If it fails</th><td>Last Will tells the page the ESP32 is offline</td><td>Retried once; the failure count is reported</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
-        <details class="card configuration-section" id="settingsPanel">
-            <summary><h2>⚙️ Settings</h2><span class="settings-summary-hint">Connection and valve control key</span></summary>
-            <p class="config-note" id="connectionSource">Using the deployment settings.</p>
-            <div class="config-grid">
-                <div class="config-item">
-                    <label class="config-label" for="supabaseUrl">Supabase URL</label>
-                    <input type="url" id="supabaseUrl" class="config-input" placeholder="https://your-project.supabase.co" autocomplete="off" spellcheck="false">
+        <section class="alerts-section" id="alerts" aria-labelledby="alertsTitle">
+            <div class="section-head">
+                <h2 id="alertsTitle">Alerts from the ESP32</h2>
+                <p>Leaks, night-time flow, unusual usage and valve changes, newest first. They arrive instantly over MQTT and are kept in the database.</p>
+            </div>
+            <div class="alerts-toolbar">
+                <div class="alert-tabs" role="group" aria-label="Filter alerts">
+                    <button type="button" class="alert-tab active" data-group="all" aria-pressed="true">All <span id="countAll">0</span></button>
+                    <button type="button" class="alert-tab" data-group="critical" aria-pressed="false">Critical <span id="countCritical">0</span></button>
+                    <button type="button" class="alert-tab" data-group="warning" aria-pressed="false">Warning <span id="countWarning">0</span></button>
+                    <button type="button" class="alert-tab" data-group="info" aria-pressed="false">Info <span id="countInfo">0</span></button>
                 </div>
-                <div class="config-item">
-                    <label class="config-label" for="supabaseKey">Public key (anon or publishable)</label>
-                    <input type="password" id="supabaseKey" class="config-input" placeholder="Never the service_role key" autocomplete="off" spellcheck="false">
+                <input type="search" id="alertSearch" class="alert-search" placeholder="Search alerts" aria-label="Search alerts">
+            </div>
+            <ol class="alert-list" id="alertsContainer" aria-live="polite">
+                <li class="alert-item empty">No alerts yet.</li>
+            </ol>
+        </section>
+
+        <section class="export-section" id="export" aria-labelledby="exportTitle">
+            <div class="section-head">
+                <h2 id="exportTitle">Download the readings</h2>
+                <p>Raw readings for the lab report: one row every 10 seconds, with the connectivity health of each upload. <span id="exportRecordCount">0</span> readings stored in the last 24 hours.</p>
+            </div>
+            <div class="export-controls">
+                <label for="exportRange">Period
+                    <select id="exportRange">
+                        <option value="1h">Last hour</option>
+                        <option value="24h" selected>Last 24 hours</option>
+                        <option value="7d">Last 7 days</option>
+                    </select>
+                </label>
+                <button type="button" class="btn" id="exportCsvBtn">Download CSV</button>
+                <button type="button" class="btn btn-quiet" id="exportJsonBtn">Download JSON</button>
+            </div>
+        </section>
+
+        <section class="how" id="how" aria-labelledby="howTitle">
+            <div class="section-head">
+                <h2 id="howTitle">How it works</h2>
+                <p>The architecture, the protocols on every link, the hardware and the rules behind the numbers above.</p>
+            </div>
+
+            <figure class="arch">
+                <div class="arch-scroll">
+                    <svg class="arch-svg" viewBox="0 0 1040 420" role="img" aria-labelledby="archTitle archDesc">
+                        <title id="archTitle">FlowState architecture</title>
+                        <desc id="archDesc">Sensors and actuators connect to the ESP32 by wires. The ESP32 publishes live readings over MQTT to a broker every 2 seconds and posts each reading over HTTPS to Supabase every 10 seconds. The web dashboard subscribes to the broker over a secure WebSocket, reads Supabase over HTTPS and receives its live inserts, and sends signed valve commands back through the broker.</desc>
+                        <defs>
+                            <marker id="arrowWire" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead arrowhead-wire" d="M0,0 L10,5 L0,10 z"/></marker>
+                            <marker id="arrowMqtt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead arrowhead-mqtt" d="M0,0 L10,5 L0,10 z"/></marker>
+                            <marker id="arrowHttps" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead arrowhead-https" d="M0,0 L10,5 L0,10 z"/></marker>
+                        </defs>
+
+                        <!-- Sensors and actuators -->
+                        <rect class="arch-box" x="16" y="30" width="210" height="370" rx="12"/>
+                        <text class="arch-title" x="32" y="58">Sensors &amp; actuators</text>
+                        <text class="arch-text" x="32" y="90">2 × YF-S201 flow sensors</text>
+                        <text class="arch-sub" x="32" y="106">pulses → interrupts · GPIO 19, 22</text>
+                        <text class="arch-text" x="32" y="140">Capacitive level sensor</text>
+                        <text class="arch-sub" x="32" y="156">analog → 12-bit ADC · GPIO 33</text>
+                        <text class="arch-text" x="32" y="190">DHT22 humidity + temp</text>
+                        <text class="arch-sub" x="32" y="206">single-wire digital · GPIO 4</text>
+                        <text class="arch-text" x="32" y="240">DS3231 real-time clock</text>
+                        <text class="arch-sub" x="32" y="256">I²C · SDA 18, SCL 21</text>
+                        <text class="arch-text" x="32" y="290">SG90 servo → valve</text>
+                        <text class="arch-sub" x="32" y="306">PWM 50 Hz · GPIO 26</text>
+                        <text class="arch-text" x="32" y="340">Buzzer</text>
+                        <text class="arch-sub" x="32" y="356">digital out · GPIO 13</text>
+                        <text class="arch-sub arch-sub-strong" x="32" y="384">Sense</text>
+
+                        <!-- ESP32 -->
+                        <path class="arch-wire" d="M226,215 L268,215" marker-start="url(#arrowWire)" marker-end="url(#arrowWire)"/>
+                        <rect class="arch-box arch-box-edge" x="270" y="110" width="180" height="210" rx="12"/>
+                        <text class="arch-title" x="286" y="138">ESP32 DevKit V1</text>
+                        <text class="arch-sub" x="286" y="156">edge processing</text>
+                        <text class="arch-text" x="286" y="186">pulses → litres, L/min</text>
+                        <text class="arch-text" x="286" y="208">60 s leak check (2 sensors)</text>
+                        <text class="arch-text" x="286" y="230">night watch 2–5 AM</text>
+                        <text class="arch-text" x="286" y="252">learns normal use</text>
+                        <text class="arch-text" x="286" y="274">auto shut-off + alarm</text>
+                        <text class="arch-sub arch-sub-strong" x="286" y="304">Process · Wi-Fi 2.4 GHz</text>
+
+                        <!-- ESP32 to broker and to Supabase -->
+                        <path class="arch-wire arch-wire-mqtt" d="M450,150 L510,150 L510,105 L568,105" marker-start="url(#arrowMqtt)" marker-end="url(#arrowMqtt)"/>
+                        <text class="arch-label" x="462" y="82">MQTT · TLS 8883</text>
+                        <text class="arch-label arch-label-sub" x="462" y="96">telemetry every 2 s ↑</text>
+                        <text class="arch-label arch-label-sub" x="462" y="132">signed commands ↓</text>
+                        <path class="arch-wire arch-wire-https" d="M450,280 L510,280 L510,315 L568,315" marker-end="url(#arrowHttps)"/>
+                        <text class="arch-label" x="462" y="338">HTTPS POST</text>
+                        <text class="arch-label arch-label-sub" x="462" y="352">REST · JSON</text>
+                        <text class="arch-label arch-label-sub" x="462" y="366">every 10 s</text>
+
+                        <!-- Broker -->
+                        <rect class="arch-box arch-box-mqtt" x="570" y="30" width="220" height="160" rx="12"/>
+                        <text class="arch-title" x="586" y="58">MQTT broker</text>
+                        <text class="arch-sub" x="586" y="76">HiveMQ · publish / subscribe</text>
+                        <text class="arch-mono" x="586" y="102">…/telemetry  live, 2 s</text>
+                        <text class="arch-mono" x="586" y="120">…/status     Last Will</text>
+                        <text class="arch-mono" x="586" y="138">…/alert      instant</text>
+                        <text class="arch-mono" x="586" y="156">…/cmd · /ack signed</text>
+                        <text class="arch-mono" x="586" y="174">…/ping · /pong round trip</text>
+
+                        <!-- Supabase -->
+                        <rect class="arch-box arch-box-https" x="570" y="230" width="220" height="170" rx="12"/>
+                        <text class="arch-title" x="586" y="258">Supabase</text>
+                        <text class="arch-sub" x="586" y="276">cloud backend</text>
+                        <text class="arch-text" x="586" y="302">REST API (PostgREST)</text>
+                        <text class="arch-text" x="586" y="324">PostgreSQL: readings, alerts</text>
+                        <text class="arch-text" x="586" y="346">get_hourly_summary()</text>
+                        <text class="arch-text" x="586" y="368">Realtime (live inserts)</text>
+                        <text class="arch-sub arch-sub-strong" x="586" y="390">Store</text>
+
+                        <!-- To the dashboard -->
+                        <path class="arch-wire arch-wire-mqtt" d="M790,110 L835,110 L835,170 L878,170" marker-start="url(#arrowMqtt)" marker-end="url(#arrowMqtt)"/>
+                        <text class="arch-label" x="800" y="96">MQTT over WSS</text>
+                        <path class="arch-wire arch-wire-https" d="M790,315 L835,315 L835,260 L878,260" marker-end="url(#arrowHttps)"/>
+                        <text class="arch-label" x="800" y="340">Realtime + SQL</text>
+
+                        <!-- Dashboard -->
+                        <rect class="arch-box" x="880" y="110" width="144" height="210" rx="12"/>
+                        <text class="arch-title" x="896" y="138">Dashboard</text>
+                        <text class="arch-sub" x="896" y="156">Netlify · this page</text>
+                        <text class="arch-text" x="896" y="186">live view</text>
+                        <text class="arch-text" x="896" y="208">5 questions</text>
+                        <text class="arch-text" x="896" y="230">alerts</text>
+                        <text class="arch-text" x="896" y="252">performance</text>
+                        <text class="arch-text" x="896" y="274">valve control</text>
+                        <text class="arch-sub arch-sub-strong" x="896" y="304">Analyze</text>
+                    </svg>
                 </div>
-                <div class="config-item">
-                    <label class="config-label" for="operatorKey">Valve control key</label>
-                    <input type="password" id="operatorKey" class="config-input" placeholder="Operator key from private.create_access_key" autocomplete="off" spellcheck="false">
+                <figcaption>Blue: MQTT (live, both ways). Teal: HTTPS and Supabase (stored). Grey: wires on the board. On a narrow screen, scroll the diagram sideways.</figcaption>
+            </figure>
+
+            <div class="how-grid">
+                <div>
+                    <h3>Protocols on every link</h3>
+                    <table class="pin-table proto-table">
+                        <thead><tr><th scope="col">Link</th><th scope="col">Protocol</th></tr></thead>
+                        <tbody>
+                            <tr><td>Flow sensors → ESP32</td><td>Digital pulses, counted by interrupts (~450 per litre)</td></tr>
+                            <tr><td>Level sensor → ESP32</td><td>Analog voltage, 12-bit ADC</td></tr>
+                            <tr><td>DHT22 → ESP32</td><td>Single-wire digital protocol</td></tr>
+                            <tr><td>DS3231 ↔ ESP32</td><td>I²C bus</td></tr>
+                            <tr><td>ESP32 → servo valve</td><td>PWM, 50 Hz</td></tr>
+                            <tr><td>ESP32 ↔ router</td><td>Wi-Fi (IEEE 802.11 b/g/n, 2.4 GHz)</td></tr>
+                            <tr><td>ESP32 ↔ broker</td><td>MQTT 3.1.1 over TLS (port 8883): QoS 0 telemetry, QoS 1 commands, retained status, Last Will</td></tr>
+                            <tr><td>ESP32 → Supabase</td><td>HTTPS REST: JSON POST, connection kept alive</td></tr>
+                            <tr><td>ESP32 → time servers</td><td>NTP, corrects the DS3231</td></tr>
+                            <tr><td>Browser ↔ broker</td><td>MQTT over secure WebSocket (port 8884)</td></tr>
+                            <tr><td>Browser ↔ Supabase</td><td>HTTPS queries, and Realtime over WebSocket</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3>Hardware (ESP32 DevKit V1)</h3>
+                    <table class="pin-table">
+                        <thead><tr><th scope="col">Part</th><th scope="col">Job</th><th scope="col">Pin</th></tr></thead>
+                        <tbody>
+                            <tr><td>YF-S201 flow sensor 1</td><td>Tank outlet</td><td>GPIO 19</td></tr>
+                            <tr><td>YF-S201 flow sensor 2</td><td>Tap</td><td>GPIO 22</td></tr>
+                            <tr><td>Capacitive level sensor</td><td>Water in the tank</td><td>GPIO 33</td></tr>
+                            <tr><td>DHT22</td><td>Humidity and temperature</td><td>GPIO 4</td></tr>
+                            <tr><td>DS3231 clock</td><td>Time for readings and night watch</td><td>SDA 18, SCL 21</td></tr>
+                            <tr><td>SG90 servo</td><td>Turns the shut-off valve</td><td>GPIO 26</td></tr>
+                            <tr><td>Active buzzer</td><td>Alarm</td><td>GPIO 13</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="tile-note">Each flow signal goes through a resistor divider, because the sensors output 5 V and ESP32 pins take 3.3 V. The servo has its own 5 V supply with a shared ground.</p>
                 </div>
             </div>
-            <div class="config-actions">
-                <button type="button" class="btn btn-save-config" id="saveSettingsBtn">💾 Save settings</button>
-                <button type="button" class="btn btn-secondary" id="resetSettingsBtn">Use deployment settings</button>
-                <button type="button" class="btn btn-secondary" id="forgetOperatorKeyBtn">Forget valve control key</button>
+
+            <div class="rules-block">
+                <h3>Processing on the ESP32</h3>
+                <ul class="rules">
+                    <li><strong>Litres from pulses.</strong> The YF-S201 gives about 450 pulses per litre. Pulses are counted with interrupts and turned into L/min every second.</li>
+                    <li><strong>Leak check.</strong> Every 60 s the litres through sensor 1 and sensor 2 are compared. Loss = (sensor 1 − sensor 2) ÷ sensor 1.</li>
+                    <li><strong>Three levels.</strong> Under 5% normal, 5–15% warning, 15% or more critical. Critical closes the valve and sounds the buzzer.</li>
+                    <li><strong>Night watch, 2–5 AM.</strong> Any flow is logged. 5 minutes of flow or 0.5 L raises an alert. 10 minutes closes the valve.</li>
+                    <li><strong>Learning.</strong> Over 3 days the device learns the normal amount for each hour and then flags use above 1.5 times that.</li>
+                    <li><strong>Safe commands.</strong> Valve commands over MQTT must carry an HMAC-SHA256 signature made with the valve key, be under 5 minutes old and never be reused.</li>
+                </ul>
             </div>
-            <p class="config-note">Connection settings are saved in this browser only. The valve control key is kept only until this tab is closed.</p>
-            <p class="config-note">Leak thresholds (Normal below 5%, Warning 5-15%, Critical above 15%) are set in the device firmware.</p>
+        </section>
+
+        <section class="team" id="team" aria-labelledby="teamTitle" hidden>
+            <div class="section-head">
+                <h2 id="teamTitle">Team 10</h2>
+                <p>Who built which part of the pipeline.</p>
+            </div>
+            <ul class="team-grid" id="teamGrid"></ul>
+        </section>
+
+        <details class="settings" id="settingsPanel">
+            <summary><span>Settings</span><span class="settings-hint">Database connection and sample data</span></summary>
+            <p class="tile-note" id="connectionSource"></p>
+            <div class="settings-grid">
+                <label for="supabaseUrl">Supabase project URL
+                    <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co" autocomplete="off" spellcheck="false">
+                </label>
+                <label for="supabaseKey">Public key (anon or publishable)
+                    <input type="password" id="supabaseKey" placeholder="Never the service_role key" autocomplete="off" spellcheck="false">
+                </label>
+            </div>
+            <div class="settings-actions">
+                <button type="button" class="btn" id="saveSettingsBtn">Save and connect</button>
+                <button type="button" class="btn btn-quiet" id="resetSettingsBtn">Use the deployment settings</button>
+                <button type="button" class="btn btn-quiet" id="sampleToggleBtn">Preview with sample data</button>
+            </div>
+            <p class="tile-note" id="mqttSettingsNote"></p>
+            <p class="tile-note">Saved in this browser only. Leak levels, night hours and the upload intervals are set in the ESP32 sketch.</p>
         </details>
-    </div>
+    </main>
 
     <footer class="footer">
-        <p>&copy; 2026 FlowState | Real-time Leak Detection &amp; Analytics</p>
+        <p><strong id="footerTeam">FlowState · Team 10</strong> · IoT Mini Project · Sense → Ingest → Process → Store → Analyze</p>
+        <p class="team-members" id="teamMembers" hidden></p>
     </footer>
 
-    <div id="adapterStatusBadge" class="adapter-status-badge" aria-live="polite" aria-atomic="true">
-        <div class="adapter-status-top">
-            <span class="adapter-status-mode" id="adapterModeLabel">LOCAL</span>
-            <span class="adapter-status-dot adapter-health-checking" id="adapterHealthDot" aria-hidden="true"></span>
-            <span class="adapter-status-health" id="adapterHealthLabel">Checking…</span>
-        </div>
-        <div class="adapter-status-url" id="adapterUrlLabel">Rule-based estimates in this browser</div>
-    </div>
-
-    <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+    <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

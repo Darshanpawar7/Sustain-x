@@ -1,134 +1,124 @@
 /*
- * Remote valve control. A command is queued in the database (operator key
- * required); the device collects it with its next upload and moves the valve.
- * The page only reports success once a reading from the device confirms it.
+ * Valve control: signs Open / Close / Auto commands in the browser with the
+ * valve key (HMAC-SHA256) and sends them to the ESP32 over MQTT. The ESP32
+ * checks the signature, the age of the command and that it was never used.
  */
 (function (FlowState) {
     'use strict';
 
-    const { lib, config, api, ui } = FlowState;
+    const { lib, config, mqttLink } = FlowState;
     const $ = (id) => document.getElementById(id);
 
-    let pending = null;  // { id, action, status, delivered_at, sentAtMs }
-    let pollTimer = null;
-    let latestReading = null;
+    const BUTTONS = ['valveOpenBtn', 'valveCloseBtn', 'valveAutoBtn'];
+    const DONE_TEXT = { open: 'Valve opened', close: 'Valve closed', auto: 'Automatic protection on' };
 
-    function showStatus(message, tone = 'info') {
-        const element = $('valveCommandStatus');
-        if (!element) return;
-        element.textContent = message;
-        element.dataset.tone = tone;
-        element.hidden = message === '';
+    let busy = false;
+    let link = { connected: false, deviceOnline: null };
+    let sampleMode = false;
+    let fingerprintRun = 0;
+    let lastResult = { text: '', tone: 'neutral' };   // the ESP32's answer to the last command
+
+    function setStatus(text, tone) {
+        const status = $('valveCommandStatus');
+        status.textContent = text;
+        status.dataset.tone = tone || 'neutral';
     }
 
-    function setBusy(busy) {
-        ['valveOpenBtn', 'valveCloseBtn'].forEach((id) => {
-            const button = $(id);
-            if (button) button.disabled = busy;
-        });
-    }
-
-    function stopPolling() {
-        window.clearInterval(pollTimer);
-        pollTimer = null;
-    }
-
-    function finish(message, tone) {
-        stopPolling();
-        pending = null;
-        setBusy(false);
-        showStatus(message, tone);
-        ui.toast(message, tone === 'info' ? 'normal' : tone);
+    function blockedReason() {
+        if (sampleMode) return 'Valve control is off while sample data is shown.';
+        if (!mqttLink.libraryLoaded()) return 'The MQTT library could not load, so the valve cannot be controlled from here.';
+        if (!link.connected) return 'Connecting to the MQTT broker…';
+        if (link.deviceOnline === false) return 'The ESP32 is offline (its MQTT Last Will says so).';
+        if (link.deviceOnline === null) return 'Waiting to hear from the ESP32 over MQTT…';
+        if (!config.getValveKey()) return 'Enter the valve key to use these buttons.';
+        return '';
     }
 
     function refresh() {
-        if (!pending) return;
-        const verb = pending.action === 'open' ? 'open' : 'close';
-        switch (lib.valveCommandState(pending, latestReading, Date.now(), config.settings.commandTimeoutMs)) {
-            case 'waiting':
-                showStatus(`"${verb}" sent. Waiting for the device to collect it (it checks every few seconds)…`);
-                break;
-            case 'delivered':
-                showStatus('The device received the command. Waiting for it to confirm…');
-                break;
-            case 'done':
-                finish(`Valve ${verb === 'open' ? 'opened' : 'closed'}. Confirmed by the device.`, 'normal');
-                break;
-            case 'expired':
-                finish('The device did not collect the command within 2 minutes, so it was cancelled. Is the device online?', 'warning');
-                break;
-            case 'timeout':
-                finish('No confirmation from the device yet. Check that it is online, then try again.', 'warning');
-                break;
-            default:
-                break;
-        }
+        const reason = blockedReason();
+        BUTTONS.forEach((id) => {
+            $(id).disabled = busy || reason !== '';
+        });
+        if (busy) return;
+        // A reason the buttons are off comes first; otherwise keep showing the last answer.
+        if (reason) setStatus(reason, 'neutral');
+        else setStatus(lastResult.text, lastResult.tone);
     }
 
-    async function pollCommand() {
-        if (!pending || !api.isReady()) return;
-        try {
-            const row = await api.fetchValveCommand(pending.id);
-            if (row && pending && row.id === pending.id) {
-                pending.status = row.status;
-                pending.delivered_at = row.delivered_at;
-            }
-        } catch (_) {
-            // Temporary network problems are retried on the next poll.
-        }
-        refresh();
-    }
-
-    async function request(action) {
-        const operatorKey = config.getOperatorKey();
-        if (!operatorKey) {
-            showStatus('Enter the valve control key in Settings first.', 'warning');
-            ui.openSettings('operatorKey');
+    async function showFingerprint() {
+        const run = ++fingerprintRun;
+        const key = config.getValveKey();
+        const note = $('valveKeyCheck');
+        if (!key) {
+            note.textContent = 'Commands are signed in this browser with the key (HMAC-SHA256) and sent over MQTT. The key itself is never sent.';
             return;
         }
-        if (!api.isReady()) {
-            showStatus('Not connected to the database.', 'warning');
-            return;
-        }
-
-        setBusy(true);
-        showStatus(`Sending "${action}"…`);
         try {
-            const result = await api.requestValveCommand(operatorKey, action);
-            pending = { id: result.command_id, action, status: 'pending', delivered_at: null, sentAtMs: Date.now() };
-            stopPolling();
-            pollTimer = window.setInterval(pollCommand, config.settings.commandPollMs);
-            refresh();
+            const fingerprint = await lib.keyFingerprint(key);
+            if (run !== fingerprintRun) return;
+            note.textContent = `Key check: ${fingerprint}. Type KEY_CHECK in the Serial Monitor; the ESP32 prints the same 8 characters when the key is right.`;
         } catch (error) {
-            setBusy(false);
-            if (error && error.code === '28000') {
-                config.setOperatorKey('');
-                showStatus('The valve control key was not accepted. Check it in Settings.', 'critical');
-            } else {
-                showStatus(`Could not send the command: ${error && error.message ? error.message : 'unknown error'}`, 'critical');
-            }
+            note.textContent = error.message;
         }
     }
 
-    function setLatestReading(reading) {
-        latestReading = reading;
+    async function send(action) {
+        if (busy) return;
+        const key = config.getValveKey();
+        busy = true;
+        refresh();
+        setStatus(`Sending a signed "${action}" command…`, 'neutral');
+        try {
+            const ack = await mqttLink.sendCommand(key, action);
+            lastResult = ack.ok
+                ? { text: `Done: ${ack.text || `${DONE_TEXT[action]}.`}`, tone: 'good' }
+                : { text: `The ESP32 refused it: ${ack.text}.`, tone: 'critical' };
+        } catch (error) {
+            lastResult = { text: error && error.message ? error.message : 'The command could not be sent.', tone: 'critical' };
+        } finally {
+            busy = false;
+            refresh();
+        }
+    }
+
+    /** @param {object} reading latest reading (from MQTT or the database) */
+    function renderReading(reading) {
+        if (!reading) return;
+        const mode = $('valveMode');
+        if (reading.auto_protection === undefined) {
+            mode.textContent = 'Automatic protection: closes on a critical leak';
+            return;
+        }
+        mode.textContent = reading.auto_protection === 1
+            ? 'Automatic protection: on'
+            : 'Automatic protection: paused (press Auto to turn it back on)';
+    }
+
+    function setLink(snapshot) {
+        link = snapshot;
         refresh();
     }
 
-    // Forget any command in flight, e.g. when the dashboard switches database.
-    function reset() {
-        stopPolling();
-        pending = null;
-        latestReading = null;
-        setBusy(false);
-        showStatus('');
+    function setSampleMode(active) {
+        sampleMode = active;
+        refresh();
     }
 
     function init() {
-        $('valveOpenBtn').addEventListener('click', () => request('open'));
-        $('valveCloseBtn').addEventListener('click', () => request('close'));
-        showStatus('');
+        const input = $('valveKeyInput');
+        input.value = config.getValveKey();
+        input.addEventListener('input', () => {
+            config.setValveKey(input.value);
+            lastResult = { text: '', tone: 'neutral' };
+            refresh();
+            showFingerprint();
+        });
+        BUTTONS.forEach((id) => {
+            $(id).addEventListener('click', () => send($(id).dataset.action));
+        });
+        showFingerprint();
+        refresh();
     }
 
-    FlowState.valve = { init, setLatestReading, refresh, reset };
+    FlowState.valve = { init, renderReading, setLink, setSampleMode };
 })(window.FlowState = window.FlowState || {});

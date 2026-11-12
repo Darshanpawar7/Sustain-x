@@ -11,6 +11,8 @@
   "devDependencies": {
     "@supabase/supabase-js": "2.117.2",
     "chart.js": "3.9.1",
+    "mqtt": "5.15.2",
+    "mqtt-packet": "9.0.2",
     "playwright": "1.63.0"
   },
   "engines": {

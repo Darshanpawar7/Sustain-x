@@ -1,328 +1,262 @@
 /*
- * The five trend charts. Each one shows server-side summaries for its chosen
- * period (15 minutes to 24 hours), so every period shows its real data.
+ * The four charts: live flow (last 15 minutes), water lost per day (Q1),
+ * use by hour of day (Q2) and today against a normal day (Q3).
+ * Colours come from the CSS custom properties, so both themes match the page.
  */
 (function (FlowState) {
     'use strict';
 
     const { lib } = FlowState;
 
-    const RANGES = ['15m', '1h', '6h', '24h'];
-    const CHART_KEYS = ['flow', 'volume', 'hourly', 'loss', 'humidity'];
-    const CANVAS_IDS = { flow: 'flowChart', volume: 'volumeChart', hourly: 'hourlyChart', loss: 'lossChart', humidity: 'humidityChart' };
-    const CHART_TYPES = { flow: 'line', volume: 'bar', hourly: 'bar', loss: 'line', humidity: 'line' };
-    const TITLES = {
-        flow: 'Flow rate',
-        volume: 'Water volume',
-        hourly: 'Usage by hour of day',
-        loss: 'Loss percentage',
-        humidity: 'Humidity'
-    };
-    const SPARKLINE_FIELDS = {
-        flow: 'avg_flow_rate_1',
-        volume: 'volume_1_liters',
-        hourly: 'volume_1_liters',
-        loss: 'avg_percentage_loss',
-        humidity: 'avg_humidity'
-    };
-    const DEFAULT_SPARKLINE = '1,8 8,7 14,6 20,5 25,4';
-
-    const timeframes = { flow: '1h', volume: '1h', hourly: '24h', loss: '1h', humidity: '1h' };
     const charts = {};
-    let history = {};
-    let onRangeSelected = () => {};
+    const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => {
+        const h = hour % 12 === 0 ? 12 : hour % 12;
+        return `${h} ${hour < 12 ? 'AM' : 'PM'}`;
+    });
 
-    function palette(dark) {
-        if (dark) {
-            return {
-                text: '#d2e5ef',
-                grid: 'rgba(174, 209, 224, 0.14)',
-                flow1Line: '#5bb9ff',
-                flow1Fill: 'rgba(91, 185, 255, 0.16)',
-                flow2Line: '#48d798',
-                flow2Fill: 'rgba(72, 215, 152, 0.16)',
-                vol1: 'rgba(91, 185, 255, 0.78)',
-                vol2: 'rgba(72, 215, 152, 0.78)',
-                hourly: 'rgba(245, 173, 63, 0.82)',
-                lossLine: '#ff7c73',
-                lossFill: 'rgba(255, 124, 115, 0.18)',
-                humidityLine: '#54d0f3',
-                humidityFill: 'rgba(84, 208, 243, 0.2)'
-            };
-        }
+    function token(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function theme() {
         return {
-            text: '#264252',
-            grid: 'rgba(38, 66, 82, 0.12)',
-            flow1Line: '#0f87c8',
-            flow1Fill: 'rgba(15, 135, 200, 0.14)',
-            flow2Line: '#0d9f6b',
-            flow2Fill: 'rgba(13, 159, 107, 0.14)',
-            vol1: 'rgba(15, 135, 200, 0.72)',
-            vol2: 'rgba(13, 159, 107, 0.72)',
-            hourly: 'rgba(240, 153, 30, 0.76)',
-            lossLine: '#d4534b',
-            lossFill: 'rgba(212, 83, 75, 0.16)',
-            humidityLine: '#148eb2',
-            humidityFill: 'rgba(20, 142, 178, 0.18)'
+            ink: token('--ink-2'),
+            grid: token('--rule'),
+            s1: token('--s1'),
+            s1Soft: token('--s1-soft'),
+            s2: token('--s2'),
+            lost: token('--critical'),
+            normal: token('--ink-3')
         };
     }
 
-    function optionsFor(key, theme) {
-        const yTicks = { color: theme.text };
-        const y = { beginAtZero: true, ticks: yTicks, grid: { color: theme.grid } };
-        if (key === 'humidity') {
-            y.min = 0;
-            y.max = 100;
-            yTicks.callback = (value) => `${value}%`;
-        }
-        if (key === 'loss') {
-            y.suggestedMax = 20;
-            yTicks.callback = (value) => `${value}%`;
-        }
+    function baseOptions(colors, extra = {}) {
         return {
             responsive: true,
             maintainAspectRatio: false,
-            // Charts refresh in the background. With animations on, Chart.js 3
-            // skips drawing when an update arrives mid-animation, leaving charts blank.
+            // With animations on, Chart.js 3 can skip drawing when updates arrive quickly.
             animation: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
-                    display: true,
                     position: 'top',
-                    labels: { color: theme.text, boxWidth: 12, usePointStyle: true, pointStyle: 'circle' }
-                }
+                    align: 'start',
+                    labels: { color: colors.ink, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded' }
+                },
+                tooltip: { titleFont: { family: 'IBM Plex Sans' }, bodyFont: { family: 'IBM Plex Mono' } }
             },
             scales: {
                 x: {
-                    ticks: { color: theme.text, autoSkip: true, autoSkipPadding: 12, maxRotation: 0, maxTicksLimit: 5 },
-                    grid: { color: theme.grid }
+                    stacked: Boolean(extra.stacked),
+                    ticks: { color: colors.ink, maxRotation: 0, autoSkip: true, autoSkipPadding: 14, maxTicksLimit: extra.maxTicks || 8 },
+                    grid: { display: false }
                 },
-                y
+                y: {
+                    stacked: Boolean(extra.stacked),
+                    beginAtZero: true,
+                    ticks: { color: colors.ink, maxTicksLimit: 5 },
+                    grid: { color: colors.grid },
+                    title: { display: Boolean(extra.yTitle), text: extra.yTitle || '', color: colors.ink }
+                }
             }
         };
     }
 
-    function datasetsFor(key, theme) {
-        const line = (label, border, fill) => ({
-            label, data: [], borderColor: border, backgroundColor: fill, tension: 0.3, fill: true, pointRadius: 0, spanGaps: false
-        });
-        switch (key) {
-            case 'flow':
-                return [line('Sensor 1 (L/min)', theme.flow1Line, theme.flow1Fill), line('Sensor 2 (L/min)', theme.flow2Line, theme.flow2Fill)];
-            case 'volume':
-                return [
-                    { label: 'Sensor 1 (L)', data: [], backgroundColor: theme.vol1 },
-                    { label: 'Sensor 2 (L)', data: [], backgroundColor: theme.vol2 }
-                ];
-            case 'hourly':
-                return [{ label: 'Litres through sensor 1', data: new Array(24).fill(0), backgroundColor: theme.hourly }];
-            case 'loss':
-                return [line('Average loss (%)', theme.lossLine, theme.lossFill)];
-            default:
-                return [line('Humidity (%)', theme.humidityLine, theme.humidityFill)];
-        }
+    function line(label, color, options = {}) {
+        return {
+            label,
+            data: [],
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: options.width || 2,
+            borderDash: options.dash || [],
+            pointRadius: 0,
+            tension: 0.25,
+            fill: false,
+            spanGaps: true,
+            type: 'line'
+        };
     }
 
-    function colorDatasets(key, chart, theme) {
-        const sets = chart.data.datasets;
-        if (key === 'flow') {
-            Object.assign(sets[0], { borderColor: theme.flow1Line, backgroundColor: theme.flow1Fill });
-            Object.assign(sets[1], { borderColor: theme.flow2Line, backgroundColor: theme.flow2Fill });
-        } else if (key === 'volume') {
-            sets[0].backgroundColor = theme.vol1;
-            sets[1].backgroundColor = theme.vol2;
-        } else if (key === 'hourly') {
-            sets[0].backgroundColor = theme.hourly;
-        } else if (key === 'loss') {
-            Object.assign(sets[0], { borderColor: theme.lossLine, backgroundColor: theme.lossFill });
-        } else {
-            Object.assign(sets[0], { borderColor: theme.humidityLine, backgroundColor: theme.humidityFill });
-        }
+    function bar(label, color) {
+        return { label, data: [], backgroundColor: color, borderRadius: 3, maxBarThickness: 34, type: 'bar' };
     }
 
-    // Short 24-hour labels ("14:05") so several fit side by side without overlapping.
-    function bucketLabel(value, range) {
-        const options = range === '15m'
-            ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }
-            : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-        return new Date(value).toLocaleTimeString([], options);
-    }
-
-    function rowsFor(range) {
-        return (history[range] && history[range].rows) || [];
-    }
-
-    function fillChart(key, rows, range) {
-        const chart = charts[key];
-        const labels = rows.map((row) => bucketLabel(row.bucket_start, range));
-        const numbers = (field) => rows.map((row) => lib.toNumber(row[field]));
-        const sets = chart.data.datasets;
-
-        if (key === 'hourly') {
-            sets[0].data = lib.hourlyUsage(rows);
-        } else {
-            chart.data.labels = labels;
-            if (key === 'flow') {
-                sets[0].data = numbers('avg_flow_rate_1');
-                sets[1].data = numbers('avg_flow_rate_2');
-            } else if (key === 'volume') {
-                sets[0].data = numbers('volume_1_liters');
-                sets[1].data = numbers('volume_2_liters');
-            } else if (key === 'loss') {
-                sets[0].data = numbers('avg_percentage_loss');
-            } else {
-                sets[0].data = rows.map((row) => lib.humidityOrNull(row.avg_humidity));
+    const SPECS = {
+        live: {
+            canvas: 'liveChart',
+            build: (c) => ({
+                type: 'line',
+                data: { labels: [], datasets: [line('Sensor 1 · tank outlet', c.s1), line('Sensor 2 · tap', c.s2)] },
+                options: baseOptions(c, { yTitle: 'L/min', maxTicks: 5 })
+            })
+        },
+        loss: {
+            canvas: 'lossChart',
+            build: (c) => ({
+                type: 'bar',
+                data: { labels: [], datasets: [bar('Reached the tap (L)', c.s2), bar('Lost (L)', c.lost)] },
+                options: baseOptions(c, { stacked: true, yTitle: 'litres' })
+            })
+        },
+        hour: {
+            canvas: 'hourChart',
+            build: (c) => ({
+                type: 'bar',
+                data: { labels: HOUR_LABELS, datasets: [bar('Average day (L)', c.s1Soft), line('Today (L)', c.s1, { width: 2.5 })] },
+                options: baseOptions(c, { yTitle: 'litres per hour', maxTicks: 8 })
+            })
+        },
+        today: {
+            canvas: 'todayChart',
+            build: (c) => ({
+                type: 'line',
+                data: { labels: HOUR_LABELS, datasets: [line('Normal day (L)', c.normal, { dash: [5, 4] }), line('Today (L)', c.s1, { width: 2.5 })] },
+                options: baseOptions(c, { yTitle: 'litres since midnight', maxTicks: 8 })
+            })
+        },
+        reliability: {
+            canvas: 'reliabilityChart',
+            build: (c) => {
+                const options = baseOptions(c, { yTitle: '% of readings stored', maxTicks: 8 });
+                options.scales.y.max = 100;
+                options.scales.y1 = {
+                    position: 'right',
+                    beginAtZero: true,
+                    ticks: { color: c.ink, maxTicksLimit: 5 },
+                    grid: { display: false },
+                    title: { display: true, text: 'upload time (ms)', color: c.ink }
+                };
+                const uploads = { ...line('Average HTTPS upload (ms)', c.s1, { width: 2 }), yAxisID: 'y1' };
+                return {
+                    type: 'bar',
+                    data: { labels: [], datasets: [bar('Readings stored (%)', c.s2), uploads] },
+                    options
+                };
             }
         }
-        chart.update('none');
-    }
+    };
 
-    function renderEmptyState(key, range, notice) {
+    function showEmpty(key, message) {
         const note = document.querySelector(`[data-chart-empty="${key}"]`);
         if (!note) return;
-        const entry = history[range];
-        const rows = rowsFor(range);
-        let message = '';
-        if (notice && !rows.length) message = notice;
-        else if (!entry || (entry.loading && !entry.fetchedAt)) message = 'Loading…';
-        else if (entry.failed && !rows.length) message = 'Could not load this period. Retrying shortly.';
-        else if (!rows.length) message = 'No readings in this period yet.';
-        note.textContent = message;
-        note.hidden = message === '';
+        note.textContent = message || '';
+        note.hidden = !message;
     }
 
-    // Tiny trend line on each timeframe tab.
-    function sparklinePoints(values) {
-        const numeric = values.filter((value) => Number.isFinite(value));
-        if (numeric.length < 2) return DEFAULT_SPARKLINE;
-        const stride = (numeric.length - 1) / 5;
-        const sampled = Array.from({ length: 6 }, (_, index) => numeric[Math.round(index * stride)]);
-        const min = Math.min(...sampled);
-        const span = Math.max(Math.max(...sampled) - min, 0.0001);
-        return sampled.map((value, index) => {
-            const x = Math.round((index / 5) * 24) + 1;
-            const y = Math.round((1 - (value - min) / span) * 7) + 1;
-            return `${x},${y}`;
-        }).join(' ');
-    }
-
-    function renderSparklines() {
-        document.querySelectorAll('.timeframe-tabs').forEach((group) => {
-            const field = SPARKLINE_FIELDS[group.dataset.chart];
-            group.querySelectorAll('.timeframe-tab').forEach((tab) => {
-                const line = tab.querySelector('.timeframe-sparkline-line');
-                if (!line || !field) return;
-                const values = rowsFor(tab.dataset.range).map((row) => lib.toNumber(row[field], NaN));
-                line.setAttribute('points', sparklinePoints(values));
-            });
-        });
-    }
-
-    function renderTitles() {
-        document.querySelectorAll('[data-chart-title]').forEach((title) => {
-            const key = title.dataset.chartTitle;
-            title.textContent = `${TITLES[key] || 'Trend'} (${timeframes[key] || '1h'})`;
-        });
-    }
-
-    let notice = '';
-
-    /**
-     * @param {object} [nextHistory] history per range, as kept by app.js
-     * @param {string} [nextNotice] message shown on empty charts instead of the usual text
-     */
-    function render(nextHistory, nextNotice) {
-        history = nextHistory || history;
-        if (nextNotice !== undefined) notice = nextNotice;
-        CHART_KEYS.forEach((key) => {
-            const range = timeframes[key];
-            if (charts[key]) fillChart(key, rowsFor(range), range);
-            renderEmptyState(key, range, notice);
-        });
-        renderSparklines();
-    }
-
-    function buildTabs() {
-        document.querySelectorAll('.timeframe-tabs').forEach((group) => {
-            const key = group.dataset.chart;
-            const tabs = group.querySelectorAll('.timeframe-tab');
-            tabs.forEach((tab) => {
-                if (!tab.querySelector('.timeframe-sparkline')) {
-                    const label = document.createElement('span');
-                    label.className = 'timeframe-label';
-                    label.textContent = tab.textContent.trim();
-                    const spark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    spark.setAttribute('viewBox', '0 0 26 10');
-                    spark.setAttribute('aria-hidden', 'true');
-                    spark.classList.add('timeframe-sparkline');
-                    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-                    polyline.classList.add('timeframe-sparkline-line');
-                    polyline.setAttribute('points', DEFAULT_SPARKLINE);
-                    spark.appendChild(polyline);
-                    tab.replaceChildren(label, spark);
-                }
-                const selected = tab.dataset.range === timeframes[key];
-                tab.classList.toggle('active', selected);
-                tab.setAttribute('aria-pressed', String(selected));
-                tab.addEventListener('click', () => {
-                    const range = tab.dataset.range;
-                    if (!RANGES.includes(range)) return;
-                    timeframes[key] = range;
-                    tabs.forEach((other) => {
-                        const isActive = other === tab;
-                        other.classList.toggle('active', isActive);
-                        other.setAttribute('aria-pressed', String(isActive));
-                    });
-                    renderTitles();
-                    render();
-                    onRangeSelected(range);
-                });
-            });
-        });
-    }
-
-    function init(dark, handlers = {}) {
-        onRangeSelected = handlers.onRangeSelected || onRangeSelected;
-        buildTabs();
-        renderTitles();
+    function init() {
         if (!window.Chart) {
             document.querySelectorAll('[data-chart-empty]').forEach((note) => {
-                note.textContent = 'Charts could not load. Check your internet connection.';
+                note.textContent = 'Charts could not load. Check the internet connection.';
                 note.hidden = false;
             });
             return;
         }
-        const theme = palette(dark);
-        CHART_KEYS.forEach((key) => {
-            const canvas = document.getElementById(CANVAS_IDS[key]);
-            if (!canvas) return;
-            charts[key] = new window.Chart(canvas, {
-                type: CHART_TYPES[key],
-                data: {
-                    labels: key === 'hourly' ? Array.from({ length: 24 }, (_, hour) => `${hour}:00`) : [],
-                    datasets: datasetsFor(key, theme)
-                },
-                options: optionsFor(key, theme)
-            });
+        window.Chart.defaults.font.family = "'IBM Plex Sans', system-ui, sans-serif";
+        const colors = theme();
+        Object.entries(SPECS).forEach(([key, spec]) => {
+            const canvas = document.getElementById(spec.canvas);
+            if (canvas) charts[key] = new window.Chart(canvas, spec.build(colors));
         });
-        render();
     }
 
-    function applyTheme(dark) {
-        const theme = palette(dark);
-        CHART_KEYS.forEach((key) => {
+    function applyTheme() {
+        if (!window.Chart) return;
+        const colors = theme();
+        Object.entries(SPECS).forEach(([key, spec]) => {
             const chart = charts[key];
             if (!chart) return;
-            colorDatasets(key, chart, theme);
-            chart.options = optionsFor(key, theme);
+            const fresh = spec.build(colors);
+            chart.data.datasets.forEach((dataset, index) => {
+                const look = fresh.data.datasets[index];
+                dataset.borderColor = look.borderColor;
+                dataset.backgroundColor = look.backgroundColor;
+            });
+            chart.options = fresh.options;
             chart.update('none');
         });
     }
 
-    function selectedRanges() {
-        return CHART_KEYS.map((key) => timeframes[key]);
+    function timeLabel(timestamp) {
+        return new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
     }
 
-    FlowState.charts = { RANGES, init, render, applyTheme, selectedRanges };
+    /** @param {object[]} readings oldest first */
+    function renderLive(readings, emptyMessage) {
+        showEmpty('live', readings.length ? '' : emptyMessage);
+        const chart = charts.live;
+        if (!chart) return;
+        chart.data.labels = readings.map((reading) => timeLabel(reading.timestamp));
+        chart.data.datasets[0].data = readings.map((reading) => Math.max(0, lib.toNumber(reading.flow_rate_1)));
+        chart.data.datasets[1].data = readings.map((reading) => Math.max(0, lib.toNumber(reading.flow_rate_2)));
+        chart.update('none');
+    }
+
+    function renderLoss(loss, emptyMessage) {
+        showEmpty('loss', loss && loss.weekUsed > 0 ? '' : emptyMessage);
+        const chart = charts.loss;
+        if (!chart || !loss) return;
+        chart.data.labels = loss.perDay.map((day) => lib.shortDay(day.dateKey).replace(/ \w+$/, ''));
+        chart.data.datasets[0].data = loss.perDay.map((day) => lib.round(Math.max(0, day.used - day.lost), 2));
+        chart.data.datasets[1].data = loss.perDay.map((day) => lib.round(day.lost, 2));
+        chart.update('none');
+    }
+
+    function renderHours(peak, emptyMessage) {
+        showEmpty('hour', peak && peak.peakHour !== null ? '' : emptyMessage);
+        const chart = charts.hour;
+        if (!chart || !peak) return;
+        chart.data.datasets[0].label = peak.basedOnToday ? 'Today so far (L)' : `Average of ${peak.daysAveraged} day${peak.daysAveraged === 1 ? '' : 's'} (L)`;
+        chart.data.datasets[0].data = peak.averageByHour.map((value) => lib.round(value, 2));
+        chart.data.datasets[1].data = peak.basedOnToday ? [] : peak.todayByHour.map((value) => lib.round(value, 2));
+        chart.update('none');
+    }
+
+    function renderToday(unusual, emptyMessage) {
+        const hasData = unusual && (unusual.todaySoFar > 0 || unusual.baselineDays > 0);
+        showEmpty('today', hasData ? '' : emptyMessage);
+        const chart = charts.today;
+        if (!chart || !unusual) return;
+        chart.data.datasets[0].data = unusual.baselineDays ? unusual.normalCumulative.map((value) => lib.round(value, 2)) : [];
+        chart.data.datasets[1].data = unusual.todayCumulative.map((value) => lib.round(value, 2));
+        chart.update('none');
+    }
+
+    /**
+     * Last 24 hours: share of the 360 readings an hour that were stored, and the
+     * average time the ESP32 took to upload one.
+     */
+    function renderReliability(rows, nowMs, emptyMessage) {
+        const hourMs = 3600000;
+        const timeZone = FlowState.config.device.timeZone;
+        // Hours start on the device's clock (India time is UTC+05:30, so not on UTC hours).
+        const parts = lib.zonedParts(nowMs, timeZone);
+        const currentHour = nowMs - (parts.minute * 60 + parts.second) * 1000 - (nowMs % 1000);
+        const byHour = new Map();
+        (rows || []).forEach((row) => {
+            const time = lib.toTime(row.hour_start);
+            if (time !== null) byHour.set(time, row);
+        });
+        const hours = Array.from({ length: 24 }, (_, index) => currentHour - (23 - index) * hourMs);
+        const hasData = hours.some((hour) => byHour.has(hour));
+        showEmpty('reliability', hasData ? '' : emptyMessage);
+        const chart = charts.reliability;
+        if (!chart) return;
+        chart.data.labels = hours.map((hour) => `${String(lib.zonedParts(hour, timeZone).hour).padStart(2, '0')}:00`);
+        chart.data.datasets[0].data = hours.map((hour) => {
+            const row = byHour.get(hour);
+            if (!row) return 0;
+            // The current hour is only partly over, so compare with what was possible so far.
+            const elapsed = hour === currentHour ? Math.max(1, (nowMs - hour) / 10000) : 360;
+            return lib.round(Math.min(100, (lib.toNumber(row.readings) / elapsed) * 100), 1);
+        });
+        chart.data.datasets[1].data = hours.map((hour) => {
+            const row = byHour.get(hour);
+            const value = row ? lib.toNumber(row.avg_upload_ms, NaN) : NaN;
+            return Number.isFinite(value) ? value : null;
+        });
+        chart.update('none');
+    }
+
+    FlowState.charts = { init, applyTheme, renderLive, renderLoss, renderHours, renderToday, renderReliability };
 })(window.FlowState = window.FlowState || {});
