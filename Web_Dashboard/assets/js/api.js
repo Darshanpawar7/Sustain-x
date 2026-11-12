@@ -1,23 +1,27 @@
 /*
- * Everything the dashboard reads from or asks of Supabase. The public key is
- * read-only; the valve command needs an operator key that the database checks.
+ * Everything the dashboard reads from Supabase. The dashboard only reads: the
+ * ESP32 is the only thing that writes (see supabase/flowstate_setup.sql).
+ *
+ * sample.js offers the same functions with made-up data, so app.js can use
+ * either one as its data source.
  */
 (function (FlowState) {
     'use strict';
 
     const EXPORT_COLUMNS = Object.freeze([
-        'id', 'timestamp', 'flow_rate_1', 'flow_rate_2', 'percentage_loss', 'water_level', 'humidity',
-        'valve_state', 'leak_status', 'anomaly_status', 'daily_total_liters', 'volume_1_ml', 'volume_2_ml'
+        'id', 'timestamp', 'flow_rate_1', 'flow_rate_2', 'percentage_loss', 'water_level', 'valve_state',
+        'leak_status', 'anomaly_status', 'system_online', 'daily_total_liters', 'humidity', 'temperature',
+        'device_timestamp', 'received_at', 'wifi_rssi', 'uptime_s', 'free_heap', 'upload_ms', 'http_failures',
+        'mqtt_connected'
     ]);
-    const EXPORT_MAX_ROWS = 50000;
+    const LIVE_COLUMNS = 'id,timestamp,flow_rate_1,flow_rate_2,percentage_loss,water_level,valve_state,'
+        + 'leak_status,anomaly_status,system_online,daily_total_liters,humidity,temperature,'
+        + 'wifi_rssi,uptime_s,free_heap,upload_ms,http_failures,mqtt_connected';
+    const EXPORT_MAX_ROWS = 70000;
     const PAGE_SIZE = 1000;
     const FUTURE_TOLERANCE_MS = 60000;
 
     let client = null;
-
-    function isReady() {
-        return client !== null;
-    }
 
     function libraryLoaded() {
         return Boolean(window.supabase && typeof window.supabase.createClient === 'function');
@@ -34,13 +38,11 @@
     }
 
     function disconnect() {
-        if (client) {
-            client.removeAllChannels().catch(() => {});
-        }
+        if (client) client.removeAllChannels().catch(() => {});
         client = null;
     }
 
-    // Rows dated in the future can only come from old clock bugs or forged data.
+    // Rows dated in the future can only come from clock bugs or forged data.
     function latestAllowedTimestamp() {
         return new Date(Date.now() + FUTURE_TOLERANCE_MS).toISOString();
     }
@@ -53,11 +55,23 @@
     async function fetchLatestReading() {
         const rows = unwrap(await client
             .from('water_readings')
-            .select('*')
+            .select(LIVE_COLUMNS)
             .lte('timestamp', latestAllowedTimestamp())
             .order('timestamp', { ascending: false })
             .limit(1));
         return rows && rows.length ? rows[0] : null;
+    }
+
+    /** Readings since `since`, oldest first (at most one page: enough for the live chart). */
+    async function fetchRecentReadings(since) {
+        const rows = unwrap(await client
+            .from('water_readings')
+            .select(LIVE_COLUMNS)
+            .gte('timestamp', since.toISOString())
+            .lte('timestamp', latestAllowedTimestamp())
+            .order('timestamp', { ascending: false })
+            .limit(PAGE_SIZE)) || [];
+        return rows.reverse();
     }
 
     async function fetchRecentAlerts(limit) {
@@ -69,25 +83,8 @@
             .limit(limit)) || [];
     }
 
-    async function fetchHistory(range) {
-        return unwrap(await client.rpc('get_reading_history', { p_range: range })) || [];
-    }
-
-    async function fetchUsageSummary(since) {
-        const data = unwrap(await client.rpc('get_usage_summary', { p_since: since.toISOString() }));
-        return Array.isArray(data) ? data[0] || null : data;
-    }
-
-    async function requestValveCommand(operatorKey, action) {
-        return unwrap(await client.rpc('request_valve_command', { p_operator_key: operatorKey, p_action: action }));
-    }
-
-    async function fetchValveCommand(id) {
-        return unwrap(await client
-            .from('valve_commands')
-            .select('id,action,status,requested_at,delivered_at')
-            .eq('id', id)
-            .maybeSingle());
+    async function fetchHourlySummary(since, timeZone) {
+        return unwrap(await client.rpc('get_hourly_summary', { p_since: since.toISOString(), p_tz: timeZone })) || [];
     }
 
     async function fetchReadingsSince(since) {
@@ -125,16 +122,13 @@
 
     FlowState.api = {
         EXPORT_COLUMNS,
-        isReady,
         libraryLoaded,
         connect,
         disconnect,
         fetchLatestReading,
+        fetchRecentReadings,
         fetchRecentAlerts,
-        fetchHistory,
-        fetchUsageSummary,
-        requestValveCommand,
-        fetchValveCommand,
+        fetchHourlySummary,
         fetchReadingsSince,
         subscribe
     };

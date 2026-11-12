@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FlowState · Team 10 · Project Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 18mm 17mm 20mm 17mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: 'IBM Plex Sans', Arial, sans-serif; font-size: 10.4pt; line-height: 1.5; color: #1B2833; }
+  h1, h2, h3 { font-weight: 700; line-height: 1.2; color: #11202B; break-after: avoid; page-break-after: avoid; }
+  h2 { font-size: 15.5pt; margin: 22pt 0 7pt; padding-top: 4pt; border-top: 1.4pt solid #11202B; }
+  h3 { font-size: 11.5pt; margin: 14pt 0 4pt; }
+  p { margin: 0 0 7pt; orphans: 3; widows: 3; }
+  ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 2.5pt; }
+  a { color: #1A6FD1; text-decoration: none; }
+  b, strong { font-weight: 600; color: #11202B; }
+  code { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 8.8pt; background: #EEF0EA; padding: 0 2.5pt; border-radius: 2pt; }
+  pre { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 8.4pt; line-height: 1.45; background: #F3F4EF; border: 0.75pt solid #DDE0D8; border-radius: 4pt; padding: 8pt 10pt; white-space: pre-wrap; word-break: break-word; margin: 6pt 0 10pt; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 11pt; font-size: 9.2pt; line-height: 1.4; }
+  th, td { text-align: left; vertical-align: top; padding: 3.6pt 6pt; border-bottom: 0.6pt solid #D5D9D2; }
+  thead th { font-weight: 600; color: #11202B; border-bottom: 1.2pt solid #11202B; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  td.mono, .mono { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 8.6pt; }
+  td.blank { color: #9AA3AB; }
+  figure { margin: 8pt 0 14pt; break-inside: avoid; page-break-inside: avoid; }
+  figure img { display: block; width: 100%; border: 0.75pt solid #D5D9D2; border-radius: 4pt; }
+  figcaption { font-size: 8.8pt; color: #5A6773; margin-top: 5pt; }
+  .formula { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 11.5pt; font-weight: 600; color: #1A6FD1; text-align: center; margin: 8pt 0 10pt; padding: 8pt; background: #F3F6FB; border-radius: 4pt; }
+  .lead { font-size: 11pt; color: #11202B; }
+  .note { font-size: 9pt; color: #5A6773; }
+  .keep { break-inside: avoid; page-break-inside: avoid; }
+
+  /* cover */
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; break-after: page; }
+  .cover .kicker { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 10pt; color: #1A6FD1; letter-spacing: 0.3pt; }
+  .cover h1 { font-size: 40pt; margin: 6pt 0 10pt; letter-spacing: -0.5pt; }
+  .cover .title { font-size: 17pt; font-weight: 500; line-height: 1.3; color: #2A3A47; max-width: 150mm; margin: 0; }
+  .cover .rule { width: 60mm; height: 3pt; background: #1A6FD1; margin: 16pt 0 0; }
+  .cover table { font-size: 10pt; max-width: 130mm; }
+  .cover .meta p { margin: 0 0 3pt; font-size: 10pt; color: #2A3A47; }
+  .pipeline { font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 9.5pt; color: #5A6773; }
+
+  /* contents */
+  .contents { page-break-after: always; break-after: page; }
+  .contents h2 { border-top: none; margin-top: 0; }
+  .contents ol { list-style: none; padding: 0; font-size: 11pt; }
+  .contents li { padding: 5pt 0; border-bottom: 0.6pt solid #E1E4DD; }
+  .contents li span { font-family: 'IBM Plex Mono', 'Courier New', monospace; color: #1A6FD1; display: inline-block; width: 26pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <p class="kicker">TEAM 10 · IOT MINI PROJECT · UE23CS342AA3</p>
+    <h1>FlowState</h1>
+    <p class="title">IoT Water Leak Detection and Consumption Analytics Using Dual Flow Sensors</p>
+    <div class="rule"></div>
+  </div>
+  <div>
+    <p style="font-size:12pt;font-weight:600;color:#11202B;margin-bottom:6pt">Project report</p>
+    <table>
+      <thead><tr><th style="width:35%">Role</th><th>Name</th><th style="width:28%">SRN</th></tr></thead>
+      <tbody>
+        <tr><td>Team Lead</td><td>Darshan P Pawar</td><td>PES2UG24CS143</td></tr>
+        <tr><td>Second Lead</td><td>Ganavi Purushothama</td><td>PES2UG24CS167</td></tr>
+        <tr><td>Member</td><td>Deepthi N Reddy</td><td>PES2UG24CS149</td></tr>
+        <tr><td>Member</td><td>Dhanush V Biradar</td><td>PES2UG24CS155</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="meta">
+    <p>12 November 2026</p>
+    <p>Live dashboard: <a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a></p>
+    <p>Source code and tests: <a href="https://github.com/Darshanpawar7/Sustain-x">github.com/Darshanpawar7/Sustain-x</a></p>
+    <p class="pipeline" style="margin-top:10pt">Sense → Ingest → Process → Store → Analyze</p>
+  </div>
+</section>
+
+<section class="contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><span>–</span>Abstract</li>
+    <li><span>1</span>Problem definition and relevance</li>
+    <li><span>2</span>Objectives and scope</li>
+    <li><span>3</span>System architecture and design</li>
+    <li><span>4</span>Hardware implementation</li>
+    <li><span>5</span>Software development</li>
+    <li><span>6</span>IoT protocols and connectivity</li>
+    <li><span>7</span>Data analytics and visualization</li>
+    <li><span>8</span>Innovation and technical depth</li>
+    <li><span>9</span>Testing, validation and results</li>
+    <li><span>10</span>Teamwork and individual contribution</li>
+    <li><span>11</span>Conclusion and future work</li>
+    <li><span>–</span>References</li>
+    <li><span>A</span>Appendix: setting the system up</li>
+  </ol>
+</section>
+
+<h2>Abstract</h2>
+<p class="lead">FlowState finds hidden water leaks by measuring flow at two points on the same pipe and comparing them every 60 seconds. Water that leaves the tank but never reaches the tap is counted as lost.</p>
+<p>An ESP32 reads two flow sensors, a tank-level sensor and a humidity sensor every second. It classifies loss as Normal, Warning or Critical on the device, and closes a servo valve on a critical leak. Live readings go to an MQTT broker every 2 s; every reading is stored in Supabase (PostgreSQL) over HTTPS every 10 s.</p>
+<p>A web dashboard turns the stored data into answers to five questions: how much water is lost, when it is used, whether today is unusual, whether water flows at night, and what it costs. On the live services, the MQTT round trip measured about 310 ms with 100% delivery, a signed valve command was confirmed in 1.24 s, and all 141 automated checks pass.</p>
+
+<h2>1. Problem definition and relevance</h2>
+<p>Hidden leaks waste water every day without anyone noticing. A cracked joint, a dripping tap or a running cistern rarely shows on a monthly bill until a lot of water is gone.</p>
+<table>
+  <thead><tr><th style="width:64%">Fact</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>The leaks in an average home waste more than 9,300 US gallons (about 35,000 L) a year</td><td><a href="https://www.epa.gov/watersense/fix-leak-week">US EPA WaterSense, Fix a Leak Week</a></td></tr>
+    <tr><td>One tap dripping once a second wastes more than 3,000 gallons (over 11,000 L) a year</td><td><a href="https://www.epa.gov/watersense/fix-leak-week">US EPA WaterSense, Fix a Leak Week</a></td></tr>
+    <tr><td>NITI Aayog warned that India faces the worst water crisis in its history, and that it is likely to get worse</td><td>NITI Aayog, Composite Water Management Index, 2018, reported by <a href="https://thewire.in/environment/water-crisis-india-niti-aayog">The Wire</a></td></tr>
+  </tbody>
+</table>
+<p>A single water meter only shows how much was used, not whether any of it was wasted. FlowState puts two flow sensors on the same pipe: one where water leaves the tank and one at the tap. Any difference between them is water that never reached its use, so a leak shows up within one 60-second comparison.</p>
+<p>This is an IoT problem by nature. The sensing has to happen at the pipe, the alarm and shut-off must work even without the internet, and the analysis needs days of history that only a cloud database keeps.</p>
+
+<h2>2. Objectives and scope</h2>
+<p>The project is designed around the analysis first: five questions a household or a hostel warden actually asks about water.</p>
+<ol>
+  <li>Am I losing water, and how much?</li>
+  <li>When do I use the most water?</li>
+  <li>Is today’s use unusual?</li>
+  <li>Is water flowing at night?</li>
+  <li>What does it cost?</li>
+</ol>
+<table>
+  <thead><tr><th style="width:18%">Stage</th><th>Objective</th></tr></thead>
+  <tbody>
+    <tr><td>Sense</td><td>Read two flow sensors, the tank level and humidity every second</td></tr>
+    <tr><td>Ingest</td><td>Send live readings over MQTT every 2 s and store one over HTTPS every 10 s</td></tr>
+    <tr><td>Process</td><td>Turn pulses into litres, compare the sensors every 60 s, classify loss, close the valve on a critical leak</td></tr>
+    <tr><td>Store</td><td>Keep every reading and alert in a cloud database that rejects impossible values</td></tr>
+    <tr><td>Analyze</td><td>Answer the five questions on a web dashboard, with cost at an editable tariff</td></tr>
+  </tbody>
+</table>
+<p>In scope: one tank-to-tap line, one ESP32, a servo-driven shut-off valve, and a public dashboard. Out of scope: several buildings, billing integration with a water board, and a mobile app; the dashboard works in a phone browser instead.</p>
+
+<h2>3. System architecture and design</h2>
+<figure>
+<svg viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FlowState architecture" style="width:100%;height:auto;font-family:'IBM Plex Sans', Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8A949C"/></marker>
+  </defs>
+  <text x="24" y="32" font-size="15" font-weight="700" fill="#11202B">Decisions on the ESP32; MQTT for live, HTTPS for storage</text>
+  <g fill="none" stroke="#8A949C" stroke-width="1.25">
+    <path d="M380 128V176" marker-start="url(#a)" marker-end="url(#a)"/>
+    <path d="M240 280V344" marker-start="url(#a)" marker-end="url(#a)"/>
+    <path d="M520 280V344" marker-end="url(#a)"/>
+    <path d="M240 416V480" marker-start="url(#a)" marker-end="url(#a)"/>
+    <path d="M520 416V480" marker-end="url(#a)"/>
+  </g>
+  <rect x="24" y="56" width="712" height="72" rx="8" fill="none" stroke="#8A949C" stroke-width="1.25"/>
+  <text x="40" y="80" font-size="13" font-weight="600" fill="#11202B">Sense: sensors and actuators, wired to the ESP32</text>
+  <text x="40" y="96" font-size="11.5" fill="#5A6773">Flow: 2 × YF-S201 on GPIO 19 (tank outlet) and 22 (tap) · Level: capacitive sensor on ADC 33</text>
+  <text x="40" y="112" font-size="11.5" fill="#5A6773">Air: DHT22 on GPIO 4 · Clock: DS3231 on I²C 18/21 · Valve: SG90 servo on PWM 26 · Buzzer: GPIO 13</text>
+  <text x="388" y="156" font-size="11.5" fill="#5A6773">pulses, ADC, I²C, PWM</text>
+  <rect x="200" y="176" width="360" height="104" rx="8" fill="#E8F1FC" stroke="#1A6FD1" stroke-width="2"/>
+  <text x="216" y="200" font-size="13" font-weight="600" fill="#11202B">Process: ESP32 DevKit V1 (edge)</text>
+  <text x="216" y="216" font-size="11.5" fill="#11202B">Pulses become litres every second</text>
+  <text x="216" y="232" font-size="11.5" fill="#11202B">Every 60 s: loss = (S1 − S2) ÷ S1 → level</text>
+  <text x="216" y="248" font-size="11.5" fill="#11202B">Night watch 2–5 AM · learns normal use</text>
+  <text x="216" y="264" font-size="11.5" fill="#11202B">Critical leak: closes the valve, sounds alarm</text>
+  <text x="248" y="306" font-size="11.5" fill="#5A6773">MQTT over TLS, every 2 s</text>
+  <text x="248" y="322" font-size="11.5" fill="#5A6773">signed commands come back</text>
+  <text x="528" y="314" font-size="11.5" fill="#5A6773">HTTPS POST, every 10 s</text>
+  <rect x="110" y="344" width="260" height="72" rx="8" fill="none" stroke="#1A6FD1" stroke-width="1.25"/>
+  <text x="126" y="368" font-size="13" font-weight="600" fill="#11202B">Ingest: MQTT broker (HiveMQ)</text>
+  <text x="126" y="384" font-size="11.5" fill="#5A6773">telemetry every 2 s · Last Will</text>
+  <text x="126" y="400" font-size="11.5" fill="#5A6773">alerts · signed commands · ping</text>
+  <rect x="390" y="344" width="260" height="72" rx="8" fill="none" stroke="#0B8F83" stroke-width="1.25"/>
+  <text x="406" y="368" font-size="13" font-weight="600" fill="#11202B">Store: Supabase (PostgreSQL)</text>
+  <text x="406" y="384" font-size="11.5" fill="#5A6773">every reading, range-checked</text>
+  <text x="406" y="400" font-size="11.5" fill="#5A6773">live stream · hourly summary</text>
+  <text x="248" y="452" font-size="11.5" fill="#5A6773">MQTT over secure WebSocket</text>
+  <text x="528" y="452" font-size="11.5" fill="#5A6773">Realtime + SQL queries</text>
+  <rect x="200" y="480" width="360" height="72" rx="8" fill="none" stroke="#8A949C" stroke-width="1.25"/>
+  <text x="216" y="504" font-size="13" font-weight="600" fill="#11202B">Analyze: web dashboard (Netlify)</text>
+  <text x="216" y="520" font-size="11.5" fill="#5A6773">Live view · five questions · alerts</text>
+  <text x="216" y="536" font-size="11.5" fill="#5A6773">Performance panel · valve control</text>
+</svg>
+<figcaption>Figure 1. FlowState architecture: four layers and the protocol on each link.</figcaption>
+</figure>
+<p>The ESP32 acts on leaks by itself; live data and commands travel over MQTT, and every reading is stored over HTTPS for the analysis. Three design choices shape the system:</p>
+<ul>
+  <li><b>Edge first.</b> Classification, the night watch and the shut-off run on the ESP32, so protection does not depend on Wi-Fi or the cloud.</li>
+  <li><b>Two protocols, two jobs.</b> MQTT suits small, frequent, two-way messages over one open connection. HTTPS suits durable storage and works through networks that block MQTT ports.</li>
+  <li><b>Analysis in the database.</b> <code>get_hourly_summary()</code> reduces about 8,600 readings a day to 24 rows, so the dashboard loads a week of analysis in one small request.</li>
+</ul>
+<table>
+  <thead><tr><th style="width:19%">Table</th><th style="width:22%">One row is</th><th>Main columns</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">water_readings</td><td>One reading, every 10 s</td><td class="mono">flow_rate_1, flow_rate_2, percentage_loss, water_level, valve_state, leak_status, daily_total_liters, humidity, temperature, wifi_rssi, upload_ms</td></tr>
+    <tr><td class="mono">alerts</td><td>One event</td><td class="mono">alert_type, message, severity, timestamp</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Hardware implementation</h2>
+<p>The build uses seven parts around an ESP32 DevKit V1 and costs about ₹2,500 to ₹3,500. Prices are rough Indian retail ranges and vary by shop.</p>
+<table>
+  <thead><tr><th style="width:27%">Part</th><th style="width:27%">Job</th><th style="width:28%">ESP32 pin and interface</th><th>Approx. cost (₹)</th></tr></thead>
+  <tbody>
+    <tr><td>ESP32 DevKit V1</td><td>Controller with Wi-Fi</td><td>–</td><td>400–500</td></tr>
+    <tr><td>2 × YF-S201 flow sensor</td><td>Flow at the tank outlet and at the tap</td><td>GPIO 19 and 22, digital pulses</td><td>450–550</td></tr>
+    <tr><td>Capacitive water-level sensor</td><td>Water in the tank</td><td>GPIO 33, analog (12-bit ADC)</td><td>150–350</td></tr>
+    <tr><td>DHT22 (DHT11 is cheaper)</td><td>Humidity and temperature near the pipes</td><td>GPIO 4, single-wire</td><td>80–250</td></tr>
+    <tr><td>DS3231 real-time clock</td><td>Keeps time without Wi-Fi</td><td>SDA 18, SCL 21, I²C</td><td>120–180</td></tr>
+    <tr><td>SG90 servo and ball valve</td><td>Shut-off valve</td><td>GPIO 26, PWM 50 Hz</td><td>300–500</td></tr>
+    <tr><td>Active buzzer</td><td>Alarm</td><td>GPIO 13, digital out</td><td>20–40</td></tr>
+    <tr><td>5 V supply, resistors, breadboard, wires, fittings</td><td>Power and plumbing</td><td>–</td><td>500–800</td></tr>
+  </tbody>
+</table>
+<h3>Wiring rules that keep the board safe</h3>
+<ul>
+  <li>The YF-S201 outputs 5 V pulses but ESP32 pins take 3.3 V. Each signal goes through a resistor divider (10 kΩ to the pin, 20 kΩ from the pin to ground), giving about 3.3 V.</li>
+  <li>The servo draws more current than the ESP32 can supply, so it has its own 5 V supply. All grounds are joined.</li>
+  <li>The DS3231 uses SDA 18 and SCL 21 rather than the usual 21 and 22, because GPIO 22 carries flow sensor 2.</li>
+</ul>
+<h3>Calibration</h3>
+<p>The YF-S201 gives about 450 pulses per litre. A bucket test (water run into a measuring jug) checks this, and the constant is adjusted if a sensor reads consistently high or low. The level sensor is calibrated by recording the ADC value with the tank empty and full. The measured results go in section 9.</p>
+
+<h2>5. Software development</h2>
+<p>The software has three parts: ESP32 firmware, a Supabase database, and a static web dashboard. All of it is in the project repository with automated tests.</p>
+<h3>Firmware</h3>
+<p>Arduino code for the ESP32 (core 3.x), split into one file per pipeline stage, so each part can be owned and explained by one person.</p>
+<table>
+  <thead><tr><th style="width:22%">File</th><th style="width:16%">Stage</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">sense.ino</td><td>Sense</td><td>Interrupts count flow pulses; reads the level sensor and the DHT22</td></tr>
+    <tr><td class="mono">process.ino</td><td>Process</td><td>60 s leak check, night watch (2–5 AM), hourly learning, valve and buzzer</td></tr>
+    <tr><td class="mono">cloud.ino</td><td>Ingest, Store</td><td>Wi-Fi, clock (DS3231 corrected by NTP), HTTPS uploads to Supabase, the alert upload queue</td></tr>
+    <tr><td class="mono">mqtt.ino</td><td>Ingest</td><td>MQTT telemetry, online status with Last Will, alerts, ping/pong, signed valve commands</td></tr>
+    <tr><td class="mono">console.ino</td><td>Debug</td><td>Serial Monitor commands: STATUS, VALVE_OPEN, VALVE_CLOSE, KEY_CHECK and more</td></tr>
+    <tr><td class="mono">flowstate_rules.h</td><td>Process</td><td>The decision rules as plain functions, also tested on a PC</td></tr>
+  </tbody>
+</table>
+<p>Passwords and keys live in a separate <code>secrets.h</code> that is never committed. Setting <code>ENABLE_MQTT</code> to 0 builds an HTTPS-only version as a fallback.</p>
+<p><b>Reliability measures.</b> A network problem must never stop the sensing or the valve:</p>
+<ul>
+  <li>An MQTT connection attempt gives up after 5 s, and a TLS handshake after 10 s. Reconnects back off from 5 s to 2 minutes.</li>
+  <li>Alerts go out over MQTT at once; their HTTPS upload waits in a small queue, so a slow network never delays closing the valve.</li>
+  <li>After three failed uploads in a row, readings are sent once a minute until one succeeds.</li>
+  <li>The daily total is saved every 60 s, so a power cut loses at most a minute of flow.</li>
+</ul>
+<h3>Database (Supabase, PostgreSQL 17)</h3>
+<p>One setup script creates the two tables with these protections:</p>
+<ul>
+  <li>The public key may add and read rows, never change or delete them.</li>
+  <li>Every value is range-checked, and a reading with a wrong device clock is stored at its arrival time.</li>
+  <li>A flood limit allows at most 60 readings and 30 alerts a minute.</li>
+</ul>
+<p>The function <code>get_hourly_summary()</code> turns about 8,600 readings a day into 24 hourly rows of water used, water lost, night flow and connectivity health.</p>
+<h3>Dashboard</h3>
+<p>Plain HTML, CSS and JavaScript with no build step, using Chart.js, supabase-js and MQTT.js, hosted on Netlify. It loads libraries with integrity hashes and runs under a strict Content-Security-Policy that allows connections only to the project’s database and the MQTT broker.</p>
+<h3>Data flow of one reading</h3>
+<p>Pulses are counted by interrupts and turned into litres every second. Every 2 s a compact JSON message goes to the broker and reaches the dashboard over a WebSocket. Every 10 s the same reading is posted to Supabase, which streams the new row to the dashboard and later folds it into the hourly summary.</p>
+
+<h2>6. IoT protocols and connectivity</h2>
+<p>FlowState uses MQTT for everything live and HTTPS for everything stored, each where it fits best.</p>
+<table>
+  <thead><tr><th style="width:32%">Link</th><th>Protocol</th></tr></thead>
+  <tbody>
+    <tr><td>Flow sensors to ESP32</td><td>Digital pulses counted by interrupts</td></tr>
+    <tr><td>Level sensor to ESP32</td><td>Analog voltage, 12-bit ADC</td></tr>
+    <tr><td>DHT22 to ESP32</td><td>Single-wire digital protocol</td></tr>
+    <tr><td>DS3231 and ESP32</td><td>I²C bus</td></tr>
+    <tr><td>ESP32 to servo</td><td>PWM, 50 Hz</td></tr>
+    <tr><td>ESP32 and router</td><td>Wi-Fi, IEEE 802.11 b/g/n, 2.4 GHz</td></tr>
+    <tr><td>ESP32 and MQTT broker</td><td>MQTT 3.1.1 over TLS, port 8883</td></tr>
+    <tr><td>ESP32 to Supabase</td><td>HTTPS REST, JSON POST, connection kept alive</td></tr>
+    <tr><td>ESP32 to time servers</td><td>NTP</td></tr>
+    <tr><td>Browser and broker</td><td>MQTT over secure WebSocket, port 8884</td></tr>
+    <tr><td>Browser and Supabase</td><td>HTTPS queries and Realtime over WebSocket</td></tr>
+  </tbody>
+</table>
+<h3>MQTT design</h3>
+<p>Every topic starts with a private root, <code>flowstate/team10-d76014</code>, so other users of the public broker do not mix with this device.</p>
+<table>
+  <thead><tr><th style="width:15%">Topic</th><th style="width:21%">Direction</th><th style="width:17%">QoS, retain</th><th>Content</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">/telemetry</td><td>ESP32 to broker</td><td>QoS 0</td><td>Live readings every 2 s, with a sequence number</td></tr>
+    <tr><td class="mono">/status</td><td>ESP32 to broker</td><td>QoS 1, retained</td><td>“online” on connect; the Last Will says “offline” if the ESP32 drops off</td></tr>
+    <tr><td class="mono">/alert</td><td>ESP32 to broker</td><td>QoS 0</td><td>Leak, night-flow, anomaly and valve alerts as they happen</td></tr>
+    <tr><td class="mono">/cmd</td><td>Dashboard to ESP32</td><td>QoS 1</td><td>Valve commands signed with HMAC-SHA256</td></tr>
+    <tr><td class="mono">/ack</td><td>ESP32 to dashboard</td><td>QoS 0</td><td>The result of each command</td></tr>
+    <tr><td class="mono">/ping, /pong</td><td>Both ways</td><td>QoS 0</td><td>Round-trip time measurement</td></tr>
+  </tbody>
+</table>
+<p>QoS 0 suits telemetry because a fresh reading follows 2 s later. Commands use QoS 1 so the broker confirms delivery. The retained status lets a viewer who opens the page later see at once whether the device is online.</p>
+<p>An example telemetry message (about 220 bytes):</p>
+<pre>{"seq":41,"ts":1762930000,"f1":4.27,"f2":3.98,"loss":6.8,"lvl":63.5,"valve":1,"auto":1,"leak":"Warning","anom":"Learning","night":"Normal","total":12.346,"hum":58.2,"temp":27.1,"rssi":-61,"up":3600,"heap":182000,"upms":240,"hfail":0}</pre>
+<p><b>Why HTTPS for storage.</b> A REST call writes one row with a plain JSON body, and it works through networks that block MQTT ports. If MQTT is blocked, the dashboard still updates from the database’s own live stream.</p>
+<p><b>Connectivity efficiency, as built:</b></p>
+<ul>
+  <li>MQTT keeps one TLS connection open, so each 220-byte message needs no new handshake (about 6.6 KB a minute).</li>
+  <li>HTTPS reuses its TLS connection between uploads; a dropped connection is retried once, and only when the send itself failed.</li>
+  <li>Sequence numbers let the dashboard count lost messages, and the ESP32 reports its own upload time and failure count.</li>
+</ul>
+
+<h2>7. Data analytics and visualization</h2>
+<p>The dashboard (<a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a>) answers each of the five questions with one plain sentence and one chart, from the last 7 days of stored readings in India time. The loss in each 60-second window is computed on the ESP32:</p>
+<p class="formula">loss (%) = (V1 − V2) ÷ V1 × 100</p>
+<p>V1 and V2 are the litres through sensor 1 (tank outlet) and sensor 2 (tap) in that window. Below 5% is Normal, 5–15% Warning, and 15% or more Critical.</p>
+<p>The database works out litres used in each hour from the rise in the ESP32’s daily total between readings. A drop to a new day’s total counts as that total; a drop on the same day (a reboot) counts as zero. Litres lost = litres used × loss % for each reading.</p>
+<table>
+  <thead><tr><th style="width:22%">Question</th><th style="width:44%">How it is worked out</th><th>How it is shown</th></tr></thead>
+  <tbody>
+    <tr><td>Am I losing water, and how much?</td><td>Lost litres per day and over 7 days, as a share of all water used; under 5% is treated as sensor error</td><td>Stacked bars per day: water that reached the tap and water lost</td></tr>
+    <tr><td>When do I use the most water?</td><td>Average litres in each hour of the day over the previous days</td><td>Bars for an average day, with today’s hours as a line</td></tr>
+    <tr><td>Is today’s use unusual?</td><td>Today’s litres so far against the average of previous days by the same time; 1.5× or more is unusual, after 3 days of data</td><td>Cumulative lines: today against a normal day</td></tr>
+    <tr><td>Is water flowing at night?</td><td>Minutes of flow between 2 and 5 AM each night, from readings with flow of 0.1 L/min or more</td><td>A strip of seven nights: dry, some flow, or alert</td></tr>
+    <tr><td>What does it cost?</td><td>Litres × the tariff in rupees per 1,000 L (editable); a month = the daily average × 30</td><td>Today, a month at this rate, and the monthly cost of leaks</td></tr>
+  </tbody>
+</table>
+<figure>
+  <img src="images/dashboard-live.png" alt="The dashboard's live section">
+  <figcaption>Figure 2. The live section of the dashboard: both flows and the gap between them, a 15-minute flow chart, the leak check, tank level, valve, today’s use and the DHT22. Shown here with the dashboard’s sample-data preview, which the page labels as sample data.</figcaption>
+</figure>
+<p>Each value briefly highlights when a new reading changes it, and the five pipeline stages light up as each reading arrives. A CSV download of the raw readings supports the lab report.</p>
+
+<h2>8. Innovation and technical depth</h2>
+<p>The core idea is differential measurement: two sensors on one pipe reveal loss directly, where a single meter only shows use.</p>
+<ul>
+  <li><b>Decisions at the edge.</b> Leak classification, the night watch and the automatic shut-off run on the ESP32, so the valve closes on a critical leak even with no internet.</li>
+  <li><b>Two protocols, each with a job.</b> MQTT carries the live view, device presence and commands; HTTPS carries durable storage. The dashboard measures both live and compares them.</li>
+  <li><b>Device presence from the protocol itself.</b> The ESP32 registers a Last Will with the broker, so the dashboard learns it went offline within about 45 s (1.5 × the 30 s keep-alive), without polling.</li>
+  <li><b>Safe actuation over a public broker.</b> A valve command must carry an HMAC-SHA256 signature made with a secret key, be under 5 minutes old, and be newer than the last command, so it cannot be forged or replayed. The browser signs it with Web Crypto; the key never leaves the page. A short key fingerprint lets the team check that the dashboard and the ESP32 hold the same key.</li>
+  <li><b>Self-checking data.</b> The database refuses impossible values and corrects a wrong device clock; the dashboard ignores readings dated in the future. Internet time (NTP) corrects the DS3231, or replaces it if it is missing.</li>
+  <li><b>Learned normal use.</b> The ESP32 learns the normal litres for each hour over 3 days and flags 1.5× that; the dashboard makes the same comparison from a week of stored data.</li>
+</ul>
+
+<h2>9. Testing, validation and results</h2>
+<p>All 141 automated checks pass, and the live MQTT path was measured at a 310 ms median round trip with 100% delivery. The hardware tests below are run by the team in the lab.</p>
+<h3>Automated tests (run on every change by GitHub Actions)</h3>
+<table>
+  <thead><tr><th style="width:25%">Suite</th><th style="width:12%">Checks</th><th>What it proves</th></tr></thead>
+  <tbody>
+    <tr><td>Firmware rules (PC, C++)</td><td>61 pass</td><td>Leak levels, night window across midnight, learning average, anomaly rule, command checks (stale, replay, clock), signed text identical to the dashboard’s</td></tr>
+    <tr><td>Dashboard unit tests</td><td>26 pass</td><td>The five answers, India time, MQTT parsing, lost-message counting, HMAC-SHA256 against the RFC 4231 test vector</td></tr>
+    <tr><td>Browser tests</td><td>12 pass</td><td>The real page under the production security policy with a simulated database and broker: live MQTT, the five answers, signed valve commands, offline warning, no script injection</td></tr>
+    <tr><td>Database</td><td>42 pass</td><td>Permissions, value checks, clock correction, flood limit, hourly analysis</td></tr>
+    <tr><td>ESP32 build</td><td>pass</td><td>Compiles with and without MQTT: 85% of flash and 16% of RAM with MQTT</td></tr>
+  </tbody>
+</table>
+<p>The database checks also ran on the live Supabase project inside a transaction that was rolled back, so the real permissions were tested and no test data was left behind. An independent code review of the firmware found that network calls could stall the main loop; those were fixed (section 5, reliability measures) before release.</p>
+<h3>Live-service measurements</h3>
+<p>Measured on 12 November 2026 on the HiveMQ public broker, with a stand-in device on a PC speaking the firmware’s exact topics and messages, and the real dashboard in Chrome.</p>
+<table>
+  <thead><tr><th style="width:55%">Measurement</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>MQTT round trip (page to device and back)</td><td>310 ms median, 306–314 ms</td></tr>
+    <tr><td>MQTT messages delivered</td><td>100%</td></tr>
+    <tr><td>Size of one telemetry message</td><td>220 bytes</td></tr>
+    <tr><td>Signed valve command, click to confirmation</td><td>1.24 s</td></tr>
+    <tr><td>Browser errors</td><td>None</td></tr>
+  </tbody>
+</table>
+<figure>
+  <img src="images/performance-panel.png" alt="The dashboard's connectivity and performance panel">
+  <figcaption>Figure 3. The dashboard’s connectivity and performance panel during that measurement. The HTTPS side was not yet connected to the database, so it shows “--”.</figcaption>
+</figure>
+<h3>Hardware tests (to be completed in the lab)</h3>
+<table>
+  <thead><tr><th style="width:30%">Test</th><th style="width:36%">Pass when</th><th style="width:12%">Status</th><th>Measured result</th></tr></thead>
+  <tbody>
+    <tr><td>H1 Flow sensor calibration (bucket test)</td><td>Each sensor within a few % of the jug</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H2 Sensors agree with no leak</td><td>Loss under 5% in every 60 s window</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H3 Leak simulation (T-piece between the sensors)</td><td>Warning at 5–15%; Critical at 15%+ closes the valve and sounds the buzzer</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H4 Night watch</td><td>Alert after 5 min of flow; valve closes after 10 min</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H5 Tank level calibration</td><td>Empty, half and full read correctly</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H6 Valve control from the dashboard</td><td>Key fingerprints match; wrong key refused; Close under 3 s</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H7 Losing the network</td><td>Offline shown within about 45 s; reconnects by itself</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H8 Power cut</td><td>Daily total kept, at most a minute of flow missed</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H9 Clock</td><td>NTP corrects the DS3231, or replaces it</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+    <tr><td>H10 Performance with the real ESP32, 1 hour</td><td>Round trip, delivery, upload time and Wi-Fi signal recorded</td><td class="blank">&nbsp;</td><td class="blank">&nbsp;</td></tr>
+  </tbody>
+</table>
+<p class="note">The step-by-step procedures are in the repository’s docs/TESTING.md. The dashboard’s performance panel gives H10’s numbers live.</p>
+
+<h2>10. Teamwork and individual contribution</h2>
+<p>The work is split by pipeline stage, so each member owns one part end to end and presents it in the lab.</p>
+<table>
+  <thead><tr><th style="width:17%">Member</th><th style="width:15%">Role</th><th style="width:42%">Owns</th><th>Presents in the lab</th></tr></thead>
+  <tbody>
+    <tr><td>Darshan P Pawar</td><td>Team Lead</td><td>Process: leak detection, night watch, automatic valve control, buzzer and system integration (process.ino, flowstate_rules.h); the final demo</td><td>A leak simulation closing the valve</td></tr>
+    <tr><td>Ganavi Purushothama</td><td>Second Lead</td><td>Ingest and Store: Wi-Fi, MQTT communication, HTTPS uploads and the Supabase database (mqtt.ino, cloud.ino, flowstate_setup.sql)</td><td>The MQTT topics, Last Will and the performance panel</td></tr>
+    <tr><td>Deepthi N Reddy</td><td>Member</td><td>Sense and hardware: sensor integration, ESP32 wiring, calibration and hardware implementation (sense.ino, wiring guide)</td><td>The bucket test and the pin map</td></tr>
+    <tr><td>Dhanush V Biradar</td><td>Member</td><td>Analyze: web dashboard, the five analytics questions, data visualization, report and presentation</td><td>The five answers from a week of data</td></tr>
+  </tbody>
+</table>
+
+<h2>11. Conclusion and future work</h2>
+<p>FlowState covers all five IoT stages with a cheap, explainable build. Two sensors find loss within a minute, the ESP32 acts on its own, and the dashboard turns stored readings into five plain answers.</p>
+<ul>
+  <li>Keep the hourly learning in the ESP32’s flash, so a restart does not reset 3 days of learning.</li>
+  <li>Check the broker’s and Supabase’s TLS certificates on the ESP32, instead of accepting any certificate as in this prototype.</li>
+  <li>Use a private MQTT broker with a user name and password per device.</li>
+  <li>Send alerts to a phone through a push service or Telegram.</li>
+  <li>Add more pairs of sensors to locate a leak to one section of a building.</li>
+</ul>
+
+<h2>References</h2>
+<ol>
+  <li>US EPA WaterSense, <a href="https://www.epa.gov/watersense/fix-leak-week">Fix a Leak Week</a> (household leak and dripping-tap figures; accessed 12 November 2026).</li>
+  <li>The Wire, <a href="https://thewire.in/environment/water-crisis-india-niti-aayog">India Facing Worst Water Crisis in History, Likely to Get Worse: NITI Aayog</a> (coverage of NITI Aayog’s Composite Water Management Index, 2018).</li>
+  <li>OASIS, <a href="https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html">MQTT Version 3.1.1</a> (QoS levels, retained messages, Last Will).</li>
+  <li>IETF, <a href="https://www.rfc-editor.org/rfc/rfc2104">RFC 2104: HMAC</a> and <a href="https://www.rfc-editor.org/rfc/rfc4231">RFC 4231: HMAC-SHA-256 test vectors</a>.</li>
+  <li>Supabase documentation: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Row Level Security</a> and <a href="https://supabase.com/docs/guides/realtime">Realtime</a>.</li>
+  <li>Team 10, FlowState source code and tests: <a href="https://github.com/Darshanpawar7/Sustain-x">github.com/Darshanpawar7/Sustain-x</a>; live dashboard: <a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a>.</li>
+</ol>
+
+<h2>Appendix A. Setting the system up</h2>
+<ol>
+  <li><b>Database.</b> Create a Supabase project, open the SQL Editor and run <code>supabase/flowstate_setup.sql</code> once. Copy the project URL and the anon key from Project Settings → API Keys.</li>
+  <li><b>Firmware.</b> In the Arduino IDE (board: ESP32 Dev Module), install ArduinoJson 6.x, RTClib, ESP32Servo, DHT sensor library, Adafruit Unified Sensor and PubSubClient. Copy <code>secrets.example.h</code> to <code>secrets.h</code>, fill in the Wi-Fi name and password (2.4 GHz), the Supabase URL and anon key, and a random valve key. Upload, open the Serial Monitor at 115200 baud and type <code>STATUS</code>.</li>
+  <li><b>Dashboard.</b> On Netlify, link the repository (base directory <code>Web_Dashboard</code>) and set <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code>. Each merge to <code>main</code> then updates the site.</li>
+  <li><b>Check.</b> The dashboard shows “Live”; the valve panel’s key check matches <code>KEY_CHECK</code> on the Serial Monitor.</li>
+</ol>
+
+</body>
+</html>

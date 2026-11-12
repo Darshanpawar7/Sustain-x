@@ -1,0 +1,41 @@
+<section id="questions" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Analysis first: five questions</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px;background:#11202B;border-radius:16px;padding:48px">
+<h3 style="font-size:32px;font-weight:600;color:#5FA8FF">What FlowState answers</h3>
+<ol style="font-size:32px;line-height:1.5;color:#F3F4EF">
+<li>Am I losing water, and how much?</li>
+<li>When do I use the most water?</li>
+<li>Is today’s use unusual?</li>
+<li>Is water flowing at night?</li>
+<li>What does it cost?</li>
+</ol>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;gap:20px;align-items:start">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1;background:#E3EEFB;border-radius:24px;padding:6px 16px">1</p>
+<div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:32px;font-weight:600;color:#11202B">Sense</h3><p style="font-size:24px;color:#3A4A57">Two flow sensors, tank level and humidity, every second</p></div>
+</div>
+<div style="display:flex;gap:20px;align-items:start">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1;background:#E3EEFB;border-radius:24px;padding:6px 16px">2</p>
+<div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:32px;font-weight:600;color:#11202B">Ingest</h3><p style="font-size:24px;color:#3A4A57">MQTT every 2 s for live data, HTTPS every 10 s for storage</p></div>
+</div>
+<div style="display:flex;gap:20px;align-items:start">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1;background:#E3EEFB;border-radius:24px;padding:6px 16px">3</p>
+<div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:32px;font-weight:600;color:#11202B">Process</h3><p style="font-size:24px;color:#3A4A57">On the ESP32: litres, a 60 s leak check, automatic shut-off</p></div>
+</div>
+<div style="display:flex;gap:20px;align-items:start">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1;background:#E3EEFB;border-radius:24px;padding:6px 16px">4</p>
+<div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:32px;font-weight:600;color:#11202B">Store</h3><p style="font-size:24px;color:#3A4A57">Supabase (PostgreSQL), every value checked</p></div>
+</div>
+<div style="display:flex;gap:20px;align-items:start">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1;background:#E3EEFB;border-radius:24px;padding:6px 16px">5</p>
+<div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:32px;font-weight:600;color:#11202B">Analyze</h3><p style="font-size:24px;color:#3A4A57">The dashboard answers the five questions</p></div>
+</div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>The course asks for analysis first, so we started from the questions a household or hostel warden actually asks, then designed each IoT stage to answer them. Walk down the five stages: what is sensed, how it travels, what the ESP32 decides, where it is stored, and how the dashboard answers.</aside>
+</section>

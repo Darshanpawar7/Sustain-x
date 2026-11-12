@@ -1,194 +1,180 @@
 /*
- * Live panels: tank, flows, leak gauge, valve position, humidity, today's
- * totals, and whether the device is actually sending data.
+ * Live panels: flows, leak check, tank, valve, today's total, the ESP32's own
+ * usage-pattern verdict, the air sensor, the pipeline stages and the
+ * connection status.
  */
 (function (FlowState) {
     'use strict';
 
-    const { lib, config } = FlowState;
+    const { lib, config, ui } = FlowState;
     const $ = (id) => document.getElementById(id);
 
-    const GAUGE_LENGTH = 345;
-    const GAUGE_FULL_SCALE_PERCENT = 30;
-    const HUMIDITY_RING_LENGTH = 339.29;
-    const LEAK_BADGES = { Normal: 'NORMAL ✓', Warning: 'WARNING ⚡', Critical: 'CRITICAL ⚠️' };
+    const LEAK_TEXT = {
+        Normal: 'Normal',
+        Warning: 'Warning: water is going missing',
+        Critical: 'Critical: valve closes automatically'
+    };
     const STATUS_TEXT = {
-        live: 'Device live',
-        delayed: 'Device delayed',
-        offline: 'Device offline',
-        'no-data': 'No readings yet',
+        live: 'Live',
+        delayed: 'Delayed',
+        offline: 'ESP32 offline',
+        'no-data': 'Waiting for the ESP32',
         'db-error': 'Database unreachable',
         'not-configured': 'Not connected',
+        sample: 'Sample data',
         connecting: 'Connecting…'
     };
 
-    let previousHumidity = null;
-
-    function setText(id, value) {
-        const element = $(id);
-        if (element) element.textContent = value;
-    }
-
-    function renderTank(levelCm) {
-        const level = Math.max(0, lib.toNumber(levelCm));
-        const percent = lib.tankPercent(level, config.settings.tankHeightCm);
-        const liquid = document.querySelector('.water-tank .liquid');
-        if (liquid) liquid.style.top = `${100 - percent}%`;
-        const label = $('tankLabel');
-        if (label) {
-            label.textContent = `${percent.toFixed(0)}%`;
-            label.style.bottom = `${Math.min(percent, 92)}%`;
-        }
-        setText('tankLevel', `${level.toFixed(1)} cm`);
+    function fixed(value, digits) {
+        return Math.max(0, lib.toNumber(value)).toFixed(digits);
     }
 
     function renderFlows(reading) {
         const flow1 = Math.max(0, lib.toNumber(reading.flow_rate_1));
         const flow2 = Math.max(0, lib.toNumber(reading.flow_rate_2));
-        setText('flow1', `${flow1.toFixed(2)} L/min`);
-        setText('flow2', `${flow2.toFixed(2)} L/min`);
-        const scale = Math.max(flow1, flow2, 5);
-        $('progressFlow1').style.width = `${(flow1 / scale) * 100}%`;
-        $('progressFlow2').style.width = `${(flow2 / scale) * 100}%`;
+        ui.setLive('flow1', flow1.toFixed(2));
+        ui.setLive('flow2', flow2.toFixed(2));
+        ui.setLive('flowGap', Math.max(0, flow1 - flow2).toFixed(2));
     }
 
     function renderLeak(reading) {
         const loss = lib.clamp(lib.toNumber(reading.percentage_loss), 0, 100);
-        const status = LEAK_BADGES[reading.leak_status] ? reading.leak_status : 'Normal';
-        setText('lossPercentage', loss.toFixed(1));
+        const status = LEAK_TEXT[reading.leak_status] ? reading.leak_status : 'Normal';
+        ui.setLive('lossPercentage', loss.toFixed(1));
+        ui.setText('leakStatus', LEAK_TEXT[status]);
+        $('leakTile').dataset.status = status.toLowerCase();
+        $('lossMarker').style.left = `${(lib.lossScalePosition(loss) * 100).toFixed(1)}%`;
+    }
 
-        const progress = $('circleProgress');
-        progress.style.strokeDashoffset = String(
-            GAUGE_LENGTH * (1 - Math.min(loss, GAUGE_FULL_SCALE_PERCENT) / GAUGE_FULL_SCALE_PERCENT)
-        );
-        progress.classList.toggle('warning', status === 'Warning');
-        progress.classList.toggle('critical', status === 'Critical');
-
-        const badge = $('leakStatus');
-        badge.classList.remove('normal', 'warning', 'critical');
-        badge.classList.add(status.toLowerCase());
-        badge.textContent = LEAK_BADGES[status];
+    function renderTank(reading) {
+        const level = Math.max(0, lib.toNumber(reading.water_level));
+        const percent = lib.tankPercent(level, config.device.tankHeightCm);
+        $('tankFill').style.transform = `scaleY(${(percent / 100).toFixed(3)})`;
+        ui.setLive('tankLabel', percent.toFixed(0));
+        ui.setText('tankLevel', level.toFixed(1));
+        return percent;
     }
 
     function renderValve(reading) {
         const open = lib.toNumber(reading.valve_state) === 1;
-        $('valveIndicator').classList.toggle('active', open);
-        setText('valveState', open ? 'OPEN' : 'CLOSED');
+        $('valveTile').dataset.open = open ? 'open' : 'closed';
+        ui.setLive('valveState', open ? 'Open' : 'Closed');
     }
 
-    function humidityState(humidity) {
-        if (humidity === null) return { state: 'muted', aura: 'NO DATA', badge: 'NO DATA' };
-        if (humidity < 30) return { state: 'dry', aura: 'DRY', badge: 'DRY AIR' };
-        if (humidity > 70) return { state: 'wet', aura: 'HUMID', badge: 'VERY HUMID' };
-        return { state: 'good', aura: 'COMFORT', badge: 'COMFORT' };
+    function renderToday(reading) {
+        const liters = Math.max(0, lib.toNumber(reading.daily_total_liters));
+        ui.setLive('dailyTotal', lib.formatLiters(liters));
+        ui.setText('todayCost', lib.formatRupees((liters * config.getTariff()) / 1000));
     }
 
-    function renderHumidity(reading) {
-        const humidity = lib.humidityOrNull(reading.humidity);
-        const look = humidityState(humidity);
-
-        const aura = $('humidityAura');
-        aura.classList.remove(
-            'humidity-state-dry', 'humidity-state-good', 'humidity-state-wet', 'humidity-state-muted',
-            'breathing-calm', 'breathing-alert'
-        );
-        aura.classList.add(`humidity-state-${look.state}`, look.state === 'dry' || look.state === 'wet' ? 'breathing-alert' : 'breathing-calm');
-
-        setText('humidityValue', humidity === null ? 'N/A' : `${humidity.toFixed(1)}%`);
-        setText('humidityAuraLabel', look.aura);
-        $('humidityOrbitProgress').style.strokeDashoffset = (HUMIDITY_RING_LENGTH * (1 - (humidity ?? 0) / 100)).toFixed(2);
-
-        const badge = $('humidityComfortBadge');
-        badge.textContent = look.badge;
-        badge.className = `humidity-comfort humidity-comfort-${look.state}`;
-
-        if (humidity === null) {
-            setText('humidityTrend', 'No valid reading from the humidity sensor.');
-        } else if (previousHumidity === null) {
-            setText('humidityTrend', 'Collecting humidity trend…');
-        } else {
-            const delta = humidity - previousHumidity;
-            const direction = delta > 0.2 ? 'rising' : delta < -0.2 ? 'falling' : 'stable';
-            setText('humidityTrend', `Indoor air is ${direction} (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%)`);
-        }
-        previousHumidity = humidity;
+    function renderPattern(reading) {
+        const value = String(reading.anomaly_status || 'Learning');
+        const element = $('anomalyStatus');
+        element.dataset.state = /anomaly/i.test(value) ? 'anomaly' : /learn/i.test(value) ? 'learning' : 'normal';
+        ui.setLive('anomalyStatus', /learn/i.test(value) ? 'Learning (first 3 days)' : value);
     }
 
-    function renderReading(reading) {
+    function renderAir(reading) {
+        const humidity = lib.optionalNumber(reading.humidity, 0, 100);
+        const temperature = lib.optionalNumber(reading.temperature, -40, 85);
+        ui.setLive('humidityValue', humidity === null ? '--' : `${humidity.toFixed(1)}% RH`);
+        ui.setLive('temperatureValue', temperature === null ? '--' : `${temperature.toFixed(1)} °C`);
+        ui.setText('airNote', humidity === null && temperature === null
+            ? 'The DHT22 is read on the ESP32 (see the Serial Monitor), but the current sketch does not upload it.'
+            : 'High humidity near the pipes can point to a slow, hidden leak.');
+    }
+
+    function renderStages(reading, tankPercent) {
+        const loss = lib.clamp(lib.toNumber(reading.percentage_loss), 0, 100);
+        ui.setLive('stageSense',
+            `S1 ${fixed(reading.flow_rate_1, 2)} · S2 ${fixed(reading.flow_rate_2, 2)} L/min · tank ${tankPercent.toFixed(0)}%`);
+        ui.setLive('stageProcess',
+            `Loss ${loss.toFixed(1)}% → ${reading.leak_status || 'Normal'} · valve ${lib.toNumber(reading.valve_state) === 1 ? 'open' : 'closed'}`);
+    }
+
+    function pulsePipeline() {
+        const stages = $('pipelineStages');
+        stages.classList.remove('lit');
+        void stages.offsetWidth;
+        stages.classList.add('lit');
+    }
+
+    /** @param {object} reading a water_readings row */
+    function renderReading(reading, options = {}) {
         if (!reading) return;
-        renderTank(reading.water_level);
         renderFlows(reading);
         renderLeak(reading);
+        const tankPercent = renderTank(reading);
         renderValve(reading);
-        renderHumidity(reading);
-        setText('anomalyStatus', reading.anomaly_status || 'Learning');
+        renderToday(reading);
+        renderPattern(reading);
+        renderAir(reading);
+        renderStages(reading, tankPercent);
+        if (options.arrived) pulsePipeline();
     }
 
-    function renderUsage(summary) {
-        if (!summary) {
-            setText('dailyTotal', '-- L');
-            setText('estimatedLoss', '-- L');
-            setText('estimatedCost', '$--');
-            return;
+    function bannerMessage(status, freshness, readingTime, mode) {
+        if (mode.dbState === 'not-configured') {
+            return mode.mqttLive
+                ? 'Live readings are arriving over MQTT, but this page is not connected to the database, so nothing is stored or analysed here. Add the database under Settings at the bottom.'
+                : 'This page is not connected to a database yet. Add it under Settings at the bottom, or preview the dashboard with sample data.';
         }
-        const total = Math.max(0, lib.toNumber(summary.total_1_liters));
-        const loss = Math.max(0, lib.toNumber(summary.loss_liters));
-        setText('dailyTotal', `${total.toFixed(2)} L`);
-        setText('estimatedLoss', `${loss.toFixed(2)} L`);
-        setText('estimatedCost', `$${(total * config.settings.costPerLiter).toFixed(2)}`);
-    }
-
-    function bannerMessage(status, freshness, readingTime) {
-        const since = readingTime === null ? '' : new Date(readingTime).toLocaleString();
+        if (mode.dbState === 'error') {
+            return 'The database cannot be reached right now. Live MQTT readings still show; stored history and analysis will catch up.';
+        }
         switch (status) {
-            case 'offline':
-                return `No data from the device for ${lib.formatAge(freshness.ageMs).replace(' ago', '')}. `
-                    + `The values below are from ${since} and may be out of date.`;
-            case 'db-error':
-                return 'The database cannot be reached right now. Showing the last values received.';
-            case 'not-configured':
-                return 'The dashboard is not connected. Open Settings at the bottom of the page to add your Supabase URL and public key.';
             case 'no-data':
-                return 'Connected, but no readings have arrived yet. Check that the device is powered and its secrets.h is filled in.';
+                return 'Connected, but no readings have arrived yet. Power the ESP32 and check its Wi-Fi name, password and keys in secrets.h. The Serial Monitor shows each upload and MQTT result.';
+            case 'offline':
+                return `No reading from the ESP32 for ${lib.formatAge(freshness.ageMs).replace(' ago', '')}. `
+                    + `The values below are from ${new Date(readingTime).toLocaleString('en-IN')}.`;
             default:
                 return '';
         }
     }
 
+    function deliveryText(mode) {
+        if (mode.sample) return 'sample data, every 3 s';
+        const mqtt = mode.mqttLive ? 'MQTT live every 2 s' : mode.mqttConnected ? 'MQTT connected' : 'MQTT connecting';
+        const store = mode.dbState !== 'ok' ? 'database not connected'
+            : mode.realtime ? 'stored readings pushed live' : `database checked every ${config.settings.latestReadingPollMs / 1000} s`;
+        return `${mqtt} · ${store}`;
+    }
+
     /**
      * @param {string} status one of the STATUS_TEXT keys
      * @param {{state: string, ageMs: number|null}} freshness
+     * @param {object|null} latestReading
+     * @param {{realtime: boolean, sample: boolean, dbState: string, mqttConnected: boolean, mqttLive: boolean}} mode
      */
-    function renderStatus(status, freshness, latestReading) {
-        const badge = $('systemStatus');
-        const dot = document.createElement('span');
-        dot.className = `status-dot ${status}`;
-        badge.replaceChildren(dot, document.createTextNode(STATUS_TEXT[status] || status));
+    function renderStatus(status, freshness, latestReading, mode) {
+        const pill = $('systemStatus');
+        pill.dataset.state = status;
+        pill.querySelector('.status-text').textContent = STATUS_TEXT[status] || status;
 
         const readingTime = latestReading ? lib.toTime(latestReading.timestamp) : null;
-        setText('lastUpdate', readingTime === null
+        ui.setText('lastUpdate', readingTime === null
             ? 'Last reading: none yet'
-            : `Last reading: ${new Date(readingTime).toLocaleTimeString()} (${lib.formatAge(freshness.ageMs)})`);
+            : `Last reading ${new Date(readingTime).toLocaleTimeString('en-IN')} (${lib.formatAge(freshness.ageMs)})`);
 
-        const message = bannerMessage(status, freshness, readingTime);
-        const banner = $('staleBanner');
-        banner.textContent = message;
+        ui.setText('stageIngest', `${readingTime === null ? 'No reading yet' : lib.formatAge(freshness.ageMs)} · ${deliveryText(mode)}`);
+        ui.setText('liveSubtitle', mode.sample
+            ? 'Sample data: a new made-up reading every 3 seconds.'
+            : 'Live over MQTT every 2 s (stored over HTTPS every 10 s). Values change the moment a reading arrives.');
+
+        const message = mode.sample ? '' : bannerMessage(status, freshness, readingTime, mode);
+        const banner = $('statusBanner');
+        ui.setText('statusBannerText', message);
         banner.hidden = message === '';
-        banner.classList.toggle('critical', status === 'offline' || status === 'db-error');
-        document.body.classList.toggle('readings-stale', status === 'offline' || status === 'db-error');
-    }
-
-    function renderSyncMode(realtimeConnected, connected) {
-        let text = 'Not connected';
-        if (connected) text = realtimeConnected ? 'Realtime' : `Polling every ${config.settings.latestReadingPollMs / 1000} s`;
-        setText('syncMode', text);
+        banner.dataset.tone = status === 'offline' || mode.dbState === 'error' ? 'critical' : 'info';
+        $('sampleStartBtn').hidden = mode.sample || !(mode.dbState === 'not-configured' || status === 'no-data');
+        $('sampleBanner').hidden = !mode.sample;
+        document.body.classList.toggle('readings-stale', status === 'offline');
     }
 
     function init() {
-        setText('tankCapacity', `${config.settings.tankHeightCm.toFixed(1)} cm`);
-        setText('costPerLiterLabel', `$${config.settings.costPerLiter.toFixed(2)}`);
-        renderUsage(null);
+        ui.setText('tankCapacity', String(config.device.tankHeightCm));
     }
 
-    FlowState.live = { init, renderReading, renderUsage, renderStatus, renderSyncMode };
+    FlowState.live = { init, renderReading, renderStatus };
 })(window.FlowState = window.FlowState || {});

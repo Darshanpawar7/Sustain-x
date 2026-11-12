@@ -1,101 +1,106 @@
 /*
- * Dashboard settings: fixed values, deployment settings from env.js, and what
- * the user saved in this browser.
+ * Dashboard settings: the project, values copied from the final ESP32 sketch,
+ * deployment settings from env.js, and what the viewer saved in this browser.
  */
 (function (FlowState) {
     'use strict';
 
     const lib = FlowState.lib;
 
-    // Keep the first four in step with flowstate_config.h in the firmware.
+    const project = Object.freeze({
+        team: 'Team 10',
+        // Shown in the "Team 10" section and the footer: one pipeline stage each.
+        members: Object.freeze([
+            Object.freeze({
+                name: 'Darshan P Pawar',
+                role: 'Team Lead',
+                part: 'Process: leak detection, night watch, automatic valve control, buzzer and system integration'
+            }),
+            Object.freeze({
+                name: 'Ganavi Purushothama',
+                role: 'Second Lead',
+                part: 'Ingest and Store: Wi-Fi, MQTT communication, HTTPS uploads and the Supabase database'
+            }),
+            Object.freeze({
+                name: 'Deepthi N Reddy',
+                role: 'Member',
+                part: 'Sense and hardware: sensor integration, ESP32 wiring, calibration and hardware implementation'
+            }),
+            Object.freeze({
+                name: 'Dhanush V Biradar',
+                role: 'Member',
+                part: 'Analyze: web dashboard, the five analytics questions, data visualization, report and presentation'
+            })
+        ]),
+        title: 'IoT Water Leak Detection and Consumption Analytics Using Dual Flow Sensors'
+    });
+
+    // Keep these in step with FlowState_ESP32_Final.ino.
+    const device = Object.freeze({
+        timeZone: 'Asia/Kolkata',          // the DS3231 keeps India time
+        uploadIntervalMs: 10000,           // SUPABASE_UPLOAD_INTERVAL_MS
+        detectionWindowSeconds: 60,        // DETECTION_WINDOW_MS
+        normalBelowPercent: 5,             // NORMAL_LOSS_THRESHOLD_PERCENT
+        criticalFromPercent: 15,           // WARNING_LOSS_THRESHOLD_PERCENT
+        tankHeightCm: 100,                 // TANK_HEIGHT_CM
+        nightStartHour: 2,                 // NIGHT_START_HOUR
+        nightEndHour: 5,                   // NIGHT_END_HOUR
+        baselineDays: 3,                   // BASELINE_DAYS_REQUIRED
+        unusualRatio: 1.5                  // checkAnomaly(): 1.5x the learned hour
+    });
+
+    // MQTT: the ESP32 publishes live telemetry here; the page subscribes over
+    // secure WebSockets. Keep topicRoot in step with MQTT_TOPIC_ROOT in the sketch.
+    const environment = window.__ENV__ || {};
+    const mqtt = Object.freeze({
+        url: String(environment.MQTT_URL || 'wss://broker.hivemq.com:8884/mqtt'),
+        topicRoot: String(environment.MQTT_TOPIC_ROOT || 'flowstate/team10-d76014'),
+        brokerName: String(environment.MQTT_BROKER_NAME || 'HiveMQ public broker'),
+        pingEveryMs: 10000,
+        commandTimeoutMs: 10000
+    });
+
     const settings = Object.freeze({
-        tankHeightCm: 100,
-        deviceUploadIntervalMs: 5000,
-        warningFromPercent: 5,
-        criticalAbovePercent: 15,
-        costPerLiter: 0.05,
-        co2KgPerLiter: 0.00034,
-        litersPerPersonPerDay: 50,
-        latestReadingPollMs: 5000,
+        analysisDays: 7,
+        liveWindowMs: 15 * 60000,
+        defaultTariffPerKiloliter: 20,     // rupees per 1,000 L; each viewer can change it
+        latestReadingPollMs: 10000,        // only when live updates are unavailable
+        realtimeSafetyPollMs: 30000,       // live updates can miss an insert (e.g. one made as they connect)
         alertsPollMs: 30000,
-        usageRefreshMs: 60000,
-        commandPollMs: 2000,
-        commandTimeoutMs: 90000,
-        maxAlerts: 50,
-        historyTtlMs: Object.freeze({ '15m': 15000, '1h': 60000, '6h': 180000, '24h': 300000 })
+        summaryRefreshMs: 30000,
+        maxAlerts: 50
     });
 
     const KEYS = Object.freeze({
         url: 'flowstate.supabaseUrl',
         key: 'flowstate.supabaseKey',
-        operatorKey: 'flowstate.operatorKey',
-        acknowledged: 'flowstate.acknowledgedAlerts'
+        tariff: 'flowstate.tariffPerKl',
+        theme: 'flowstate.theme',
+        valveKey: 'flowstate.valveKey'
     });
 
-    function storageArea(name) {
+    function read(key) {
         try {
-            return window[name] || null;
+            return window.localStorage ? window.localStorage.getItem(key) : null;
         } catch (_) {
             return null;
         }
     }
 
-    function read(areaName, key) {
-        const area = storageArea(areaName);
-        if (!area) return null;
+    function write(key, value) {
         try {
-            return area.getItem(key);
-        } catch (_) {
-            return null;
-        }
-    }
-
-    function write(areaName, key, value) {
-        const area = storageArea(areaName);
-        if (!area) return;
-        try {
-            if (value === null || value === undefined) area.removeItem(key);
-            else area.setItem(key, value);
+            if (!window.localStorage) return;
+            if (value === null || value === undefined) window.localStorage.removeItem(key);
+            else window.localStorage.setItem(key, value);
         } catch (_) {
             // Storage can be full or blocked; the dashboard still works without it.
         }
     }
 
-    const local = { get: (key) => read('localStorage', key), set: (key, value) => write('localStorage', key, value) };
-    const session = { get: (key) => read('sessionStorage', key), set: (key, value) => write('sessionStorage', key, value) };
+    const local = { get: read, set: write };
 
     function env() {
         return window.__ENV__ || {};
-    }
-
-    /**
-     * Older versions saved connection values under generic keys, sometimes just
-     * by pressing Ctrl+S. Those values could also have been planted through the
-     * old alert injection hole, so they are cleared rather than trusted.
-     * @returns {boolean} true when custom values were cleared
-     */
-    function migrateLegacySettings() {
-        const legacyUrl = local.get('supabaseUrl');
-        const legacyKey = local.get('supabaseKey');
-        const hadCustomValues = Boolean(
-            lib.overrideToSave(legacyUrl, env().SUPABASE_URL) || lib.overrideToSave(legacyKey, env().SUPABASE_KEY)
-        );
-
-        const legacyAcks = local.get('acknowledgedAlerts');
-        if (legacyAcks !== null && local.get(KEYS.acknowledged) === null) {
-            try {
-                const migrated = JSON.parse(legacyAcks)
-                    .filter((key) => /^id:\d+$/.test(key))
-                    .map((key) => `db:${key.slice(3)}`);
-                local.set(KEYS.acknowledged, JSON.stringify(migrated));
-            } catch (_) {
-                // Unreadable old data is simply dropped.
-            }
-        }
-
-        ['supabaseUrl', 'supabaseKey', 'normalThreshold', 'warningThreshold', 'apiBaseUrl', 'acknowledgedAlerts']
-            .forEach((key) => local.set(key, null));
-        return hadCustomValues;
     }
 
     function getConnection() {
@@ -120,7 +125,7 @@
         }
         local.set(KEYS.url, lib.overrideToSave(cleanedUrl, lib.cleanUrl(env().SUPABASE_URL)));
         local.set(KEYS.key, lib.overrideToSave(cleanedKey, env().SUPABASE_KEY));
-        return { ok: true, message: 'Connection settings saved' };
+        return { ok: true, message: 'Connection saved' };
     }
 
     function resetConnection() {
@@ -128,34 +133,52 @@
         local.set(KEYS.key, null);
     }
 
-    // The valve control key is kept only for this browser tab.
-    function getOperatorKey() {
-        return session.get(KEYS.operatorKey) || '';
+    function getTariff() {
+        const saved = lib.toNumber(local.get(KEYS.tariff), NaN);
+        return Number.isFinite(saved) && saved >= 0 && saved <= 10000 ? saved : settings.defaultTariffPerKiloliter;
     }
 
-    function setOperatorKey(value) {
-        const cleaned = String(value || '').trim();
-        session.set(KEYS.operatorKey, cleaned || null);
+    function setTariff(value) {
+        const parsed = lib.toNumber(value, NaN);
+        if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10000) return false;
+        local.set(KEYS.tariff, String(parsed));
+        return true;
     }
 
-    function getAdapterConfig() {
-        const mode = String(env().API_ADAPTER_MODE || 'local').toLowerCase();
-        const baseUrl = lib.cleanUrl(env().API_BASE_URL);
-        if (mode === 'remote' && lib.isValidSupabaseUrl(baseUrl)) return { mode: 'remote', baseUrl };
-        return { mode: 'local', baseUrl: '' };
+    // The valve key lives only in this tab (sessionStorage) and is never sent anywhere:
+    // it is only used to sign commands in the browser.
+    function getValveKey() {
+        try {
+            return window.sessionStorage ? window.sessionStorage.getItem(KEYS.valveKey) || '' : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function setValveKey(value) {
+        try {
+            if (!window.sessionStorage) return;
+            const cleaned = String(value || '').trim();
+            if (cleaned) window.sessionStorage.setItem(KEYS.valveKey, cleaned);
+            else window.sessionStorage.removeItem(KEYS.valveKey);
+        } catch (_) {
+            // Blocked storage: the key is simply not remembered.
+        }
     }
 
     FlowState.config = {
+        project,
+        device,
+        mqtt,
         settings,
+        getValveKey,
+        setValveKey,
         KEYS,
         local,
-        session,
-        migrateLegacySettings,
         getConnection,
         saveConnection,
         resetConnection,
-        getOperatorKey,
-        setOperatorKey,
-        getAdapterConfig
+        getTariff,
+        setTariff
     };
 })(window.FlowState = window.FlowState || {});

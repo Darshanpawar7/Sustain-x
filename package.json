@@ -6,11 +6,14 @@
     "test": "node --test \"tests/dashboard/*.test.mjs\"",
     "test:db": "node tests/db/run.mjs",
     "test:e2e": "node --test \"tests/e2e/*.test.mjs\"",
-    "build:dashboard": "cd Web_Dashboard && node ../scripts/netlify-build.mjs"
+    "build:dashboard": "cd Web_Dashboard && node ../scripts/netlify-build.mjs",
+    "pdfs": "node scripts/make-pdfs.mjs docs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.117.2",
     "chart.js": "3.9.1",
+    "mqtt": "5.15.2",
+    "mqtt-packet": "9.0.2",
     "playwright": "1.63.0"
   },
   "engines": {

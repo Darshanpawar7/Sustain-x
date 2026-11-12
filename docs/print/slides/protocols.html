@@ -1,0 +1,17 @@
+<section id="protocols" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">MQTT for live, HTTPS to store</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<table style="font-size:24px;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif">
+<tr><th style="width:22%"></th><th style="width:39%;color:#1A6FD1">MQTT</th><th style="width:39%;color:#0B8F83">HTTPS (REST)</th></tr>
+<tr><td>Job</td><td>Live view, status, valve commands</td><td>Every reading stored for analysis</td></tr>
+<tr><td>How often</td><td>Every 2 s</td><td>Every 10 s</td></tr>
+<tr><td>Connection</td><td>One TLS link stays open; pushes both ways</td><td>A request per reading; the TLS link is reused</td></tr>
+<tr><td>Delivery check</td><td>Sequence numbers count lost messages</td><td>Readings stored against one every 10 s</td></tr>
+<tr><td>If it fails</td><td>Last Will tells the dashboard “offline”</td><td>Retried once; failures are counted</td></tr>
+<tr><td>Measured</td><td>310 ms round trip, 100% delivered, 220 bytes</td><td>Upload time reported by the ESP32</td></tr>
+</table>
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#3A4A57">Topics under flowstate/team10-d76014: /telemetry · /status (retained, Last Will) · /alert · /cmd (QoS 1) · /ack · /ping and /pong</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>This answers the protocols criterion. MQTT is publish and subscribe: one connection to the broker stays open, so small messages flow every 2 s with no handshake each time, and commands come back the same way. Telemetry uses QoS 0 because a fresh reading follows; commands use QoS 1. The retained status plus the Last Will tell anyone watching whether the ESP32 is online. HTTPS stores every reading in PostgreSQL and works even where MQTT ports are blocked.</aside>
+</section>

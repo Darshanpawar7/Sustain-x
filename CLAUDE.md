@@ -35,5 +35,7 @@ FlowState detects hidden water leaks and analyses how water is used, so that was
 
 - Prefer changes that make a pipeline stage easier to demonstrate, or that make the analysis more meaningful. Avoid features that do not serve the objective.
 - Keep it buildable and affordable for a student team, and explainable: every team member must be able to explain their part in the lab.
-- The dashboard's "Sustainability Impact Lab" scoring cards and "Judges Demo Mode" came from an earlier competition. Adapt them to this course when asked.
+- The competition-only sections ("Sustainability Impact Lab", "Judges Demo Mode") were removed in 2.0.0; the dashboard now follows the five questions above.
+- The current system: firmware in [ESP32_Code/FlowState_ESP32](ESP32_Code/FlowState_ESP32) (from the team's final sketch: HTTPS to Supabase every 10 s plus MQTT every 2 s), database from [supabase/flowstate_setup.sql](supabase/flowstate_setup.sql) only. Never run the migrations in `archive/`: they block the firmware's uploads.
+- The marking scheme (UE23CS342AA3) has ten criteria, each worth 5: problem, architecture, hardware, software, IoT protocols (MQTT/CoAP/BLE/LoRa), analytics and visualization, innovation, documentation and presentation, testing and results, and teamwork. Keep evidence for each in the README and [docs/TESTING.md](docs/TESTING.md).
 - Setup, testing and upgrade steps are in [README.md](README.md). The security model is in [SECURITY.md](SECURITY.md).

@@ -1,20 +1,27 @@
 #!/usr/bin/env node
-// Applies every Supabase migration (twice, to prove they are safe to re-run)
-// and then runs tests/db/assertions.sql.
+// Database tests for supabase/flowstate_setup.sql: applies the setup twice (to
+// prove it is safe to re-run) on a fresh database, then runs
+// tests/db/setup_assertions.sql.
 //
-// Uses DATABASE_URL when it is set (for example in CI). Otherwise it creates a
+// Uses DATABASE_URL when it is set (for example in CI): a scratch database
+// named flowstate_setup_test is created there. Otherwise it creates a
 // temporary PostgreSQL cluster with initdb/pg_ctl. Those tools must be on PATH,
 // or set PG_BIN to the folder that contains them.
+//
+// To check a live Supabase project without leaving anything behind, run the
+// setup and the assertions inside one transaction that is rolled back (see
+// docs/TESTING.md).
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const migrationsDir = join(here, '..', '..', 'supabase', 'migrations');
+const setupFile = join(here, '..', '..', 'supabase', 'flowstate_setup.sql');
 const TEMP_PORT = '54329';
+const SCRATCH_DB = 'flowstate_setup_test';
 
 function run(command, args, options = {}) {
   const executable = process.env.PG_BIN ? join(process.env.PG_BIN, command) : command;
@@ -43,18 +50,20 @@ function applySqlFile(connection, file) {
 }
 
 function runSuite(connection) {
-  const migrations = readdirSync(migrationsDir)
-    .filter((name) => name.endsWith('.sql'))
-    .sort()
-    .map((name) => join(migrationsDir, name));
-
-  applySqlFile(connection, join(here, 'supabase_stub.sql'));
-  for (const pass of [1, 2]) {
-    console.log(`\n== Applying ${migrations.length} migrations (pass ${pass}) ==`);
-    migrations.forEach((file) => applySqlFile(connection, file));
+  for (const sql of [`drop database if exists ${SCRATCH_DB}`, `create database ${SCRATCH_DB}`]) {
+    runOrThrow('psql', [connection, '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-c', sql]);
   }
-  console.log('\n== Running assertions ==');
-  applySqlFile(connection, join(here, 'assertions.sql'));
+  const url = new URL(connection);
+  url.pathname = `/${SCRATCH_DB}`;
+  const scratch = url.toString();
+
+  applySqlFile(scratch, join(here, 'supabase_stub.sql'));
+  for (const pass of [1, 2]) {
+    console.log(`\n== Applying flowstate_setup.sql (pass ${pass}) ==`);
+    applySqlFile(scratch, setupFile);
+  }
+  console.log('\n== Running setup assertions ==');
+  applySqlFile(scratch, join(here, 'setup_assertions.sql'));
 }
 
 function withTemporaryCluster(callback) {

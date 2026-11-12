@@ -1,0 +1,28 @@
+<section id="edge" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">The ESP32 decides on its own</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1A6FD1">loss = (S1 − S2) ÷ S1, every 60 s</p>
+<div style="display:flex;gap:20px">
+<p style="flex:1;font-size:24px;font-weight:600;color:#14532D;background:#DCEFE3;border-radius:12px;padding:16px 20px">Normal · under 5%</p>
+<p style="flex:1;font-size:24px;font-weight:600;color:#6B4100;background:#F5E6CC;border-radius:12px;padding:16px 20px">Warning · 5–15%</p>
+<p style="flex:1.6;font-size:24px;font-weight:600;color:#8A2615;background:#F6DCD7;border-radius:12px;padding:16px 20px">Critical · 15% and above: valve closes, buzzer sounds</p>
+</div>
+<div style="display:flex;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Night watch, 2–5 AM</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">5 minutes of flow or 0.5 L raises an alert; 10 minutes closes the valve.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Learns normal use</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Three days of hourly averages, then use above 1.5× normal is flagged.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Works offline</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Decisions need no Wi-Fi; the daily total survives a power cut.</p>
+</div>
+</div>
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;color:#3A4A57">One file per stage: sense.ino · process.ino · cloud.ino · mqtt.ino · console.ino</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>This is the Process stage. Every 60 seconds the ESP32 compares the litres through both sensors. Under 5% is normal sensor error, 5 to 15% is a warning, and 15% or more is critical: the servo closes the valve and the buzzer sounds, with no cloud involved. At night, between 2 and 5 AM, any steady flow is suspicious. The rules are in flowstate_rules.h and are tested on a PC: 61 checks pass.</aside>
+</section>

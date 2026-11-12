@@ -106,3 +106,9 @@ Web_Dashboard/_headers
 # Test output
 test-results/
 playwright-report/
+
+# Firmware variants built only in CI
+ci-variants/
+
+# PDFs printed by scripts/make-pdfs.mjs without an output folder
+docs/print/out/

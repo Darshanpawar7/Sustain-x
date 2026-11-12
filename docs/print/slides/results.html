@@ -1,0 +1,32 @@
+<section id="results" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Tested end to end</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:grid;grid-template-columns:1fr 640px;gap:48px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:72px;font-weight:600;line-height:1.1;color:#1A6FD1">141/141</p>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">automated checks pass: firmware 61, database 42, dashboard 26, browser 12</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:72px;font-weight:600;line-height:1.1;color:#1A6FD1">310 ms</p>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">MQTT round trip, page to device and back (median)</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:72px;font-weight:600;line-height:1.1;color:#1A6FD1">100%</p>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">MQTT messages delivered, counted from sequence numbers</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:72px;font-weight:600;line-height:1.1;color:#1A6FD1">1.24 s</p>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">signed Close command, click to confirmation</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<img src="/_blob/28239206eb961a159d912fe14c468f6a" alt="The dashboard's connectivity and performance panel: MQTT connected, 310 ms round trip, 100% delivered, 219-byte messages, Wi-Fi signal and uptime" style="width:640px;height:424px;object-fit:contain;background:#E9EBE4;border:1px solid #D9DCD3;border-radius:12px">
+<p style="font-size:24px;line-height:1.4;color:#6F7C87">Measured on the real HiveMQ broker with a stand-in device, 12 Nov 2026</p>
+</div>
+</div>
+<p style="font-size:24px;line-height:1.4;color:#11202B"><b>In the lab:</b> hardware tests H1–H10, including calibration, a leak simulation, the night watch, network loss and a power cut.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>Every change runs 141 automated checks on GitHub: the firmware rules on a PC, the database permissions and analysis, the dashboard logic, and the real page in a browser against a simulated broker and database. The numbers on the right were measured on the real public broker with a stand-in device; replace them with the ESP32’s own figures from test H10 before presenting.</aside>
+</section>

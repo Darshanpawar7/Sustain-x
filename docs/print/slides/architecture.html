@@ -1,0 +1,40 @@
+<section id="architecture" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Architecture: edge first</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;flex-direction:column;gap:4px;background:#FBFBF8;border:1px solid #C9CEC4;border-radius:12px;padding:16px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Sense · sensors and actuators</h3>
+<p style="font-size:24px;color:#3A4A57">2 × YF-S201 flow (GPIO 19, 22) · level (ADC 33) · DHT22 · DS3231 (I²C) · SG90 valve (PWM) · buzzer</p>
+</div>
+<div style="display:flex;justify-content:center"><x-shape kind="arrow-down" style="width:24px;height:40px;background:#6F7C87"></x-shape></div>
+<div style="display:flex;flex-direction:column;gap:4px;background:#E3EEFB;border:2px solid #1A6FD1;border-radius:12px;padding:16px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Process · ESP32 DevKit V1, at the edge</h3>
+<p style="font-size:24px;color:#11202B">Pulses → litres every second · 60 s leak check · night watch 2–5 AM · learns normal use · closes the valve</p>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;justify-content:center;align-items:center;gap:16px"><x-shape kind="arrow-down" style="width:24px;height:40px;background:#1A6FD1"></x-shape><p style="font-size:24px;color:#1A6FD1">MQTT over TLS · every 2 s · commands back</p></div>
+<div style="flex:1;display:flex;justify-content:center;align-items:center;gap:16px"><x-shape kind="arrow-down" style="width:24px;height:40px;background:#0B8F83"></x-shape><p style="font-size:24px;color:#0B8F83">HTTPS POST · every 10 s</p></div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:4px;background:#FBFBF8;border:1px solid #1A6FD1;border-radius:12px;padding:16px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Ingest · MQTT broker</h3>
+<p style="font-size:24px;color:#3A4A57">Telemetry · status with Last Will · alerts · signed commands · ping</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px;background:#FBFBF8;border:1px solid #0B8F83;border-radius:12px;padding:16px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Store · Supabase PostgreSQL</h3>
+<p style="font-size:24px;color:#3A4A57">Every reading, range-checked · live stream · hourly summary</p>
+</div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;justify-content:center;align-items:center;gap:16px"><x-shape kind="arrow-down" style="width:24px;height:40px;background:#1A6FD1"></x-shape><p style="font-size:24px;color:#1A6FD1">MQTT over WebSocket</p></div>
+<div style="flex:1;display:flex;justify-content:center;align-items:center;gap:16px"><x-shape kind="arrow-down" style="width:24px;height:40px;background:#0B8F83"></x-shape><p style="font-size:24px;color:#0B8F83">Realtime + SQL</p></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px;background:#FBFBF8;border:1px solid #C9CEC4;border-radius:12px;padding:16px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Analyze · web dashboard</h3>
+<p style="font-size:24px;color:#3A4A57">Live view · five questions · alerts · performance panel · valve control</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>Read it top to bottom. The ESP32 makes every safety decision itself, so the valve closes on a critical leak even without Wi-Fi. Then two paths leave the board: MQTT for the live view, status and commands (blue), and HTTPS for storing every reading (teal). The dashboard listens to both. If a campus network blocks MQTT, storage over HTTPS still works and the dashboard falls back to the database’s live stream.</aside>
+</section>
