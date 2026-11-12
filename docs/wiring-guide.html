@@ -82,7 +82,7 @@ input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
   <section>
     <h2>Four rules before you start</h2>
     <div class="rules">
-      <div class="rule"><b>1. Flow sensors need a level converter</b><p>Their signal is 5 V; ESP32 pins take 3.3 V. Wire each yellow signal through a 4-channel logic level converter.</p></div>
+      <div class="rule"><b>1. Flow sensors need a level converter</b><p>Their signal is 5 V; ESP32 pins take 3.3 V. Wire each yellow signal through a 4-channel logic level converter, or through a resistor divider: 10 kΩ from the signal to the ESP32 pin and 20 kΩ from that pin to GND (5 V × 20 ÷ 30 ≈ 3.3 V).</p></div>
       <div class="rule"><b>2. Small sensors run on 3V3</b><p>The clock, humidity and level sensors go to <span class="mono">3V3</span>, never 5 V, so their signals stay safe.</p></div>
       <div class="rule"><b>3. The servo gets its own 5 V supply</b><p>Use a separate 5 V 2 A adapter. Powering it from the ESP32 makes the board restart when the valve moves.</p></div>
       <div class="rule"><b>4. One shared ground</b><p>Every GND (board, sensors, converter, servo adapter) connects together.</p></div>
