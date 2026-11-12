@@ -1,0 +1,16 @@
+<section id="answers" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Five questions, five answers</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<table style="font-size:28px;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif">
+<tr><th style="width:26%">Question</th><th style="width:44%">How it is worked out</th><th style="width:30%">Shown as</th></tr>
+<tr><td>Am I losing water?</td><td>Lost litres per day and in 7 days; under 5% is sensor error</td><td>Bars: reached the tap, lost</td></tr>
+<tr><td>When do I use the most?</td><td>Average litres in each hour of the day</td><td>Bars by hour, today as a line</td></tr>
+<tr><td>Is today unusual?</td><td>Today so far against previous days by the same time; 1.5× is unusual</td><td>Today against a normal day</td></tr>
+<tr><td>Is water flowing at night?</td><td>Minutes of flow between 2 and 5 AM, each night</td><td>Seven nights: dry, some, alert</td></tr>
+<tr><td>What does it cost?</td><td>Litres × tariff (₹ per 1,000 L, editable)</td><td>Today, a month, leaks a month</td></tr>
+</table>
+<p style="font-size:32px;line-height:1.4;color:#11202B">The database sums each hour (<span style="color:#0B8F83">get_hourly_summary</span>), so a week of analysis loads in one small request.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>Each question gets one plain sentence and one chart on the dashboard. Usage comes from the rise in the ESP32’s daily total between readings; loss is usage times the 60-second loss percentage. Today is compared with the previous days up to the same time of day, the same 1.5× rule the ESP32 uses. Change the tariff on the page to your local rate.</aside>
+</section>

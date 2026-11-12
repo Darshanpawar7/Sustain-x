@@ -1,0 +1,33 @@
+<section id="hardware" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Hardware: about ₹2,500–3,500</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:grid;grid-template-columns:1.55fr 1fr;gap:48px">
+<table style="font-size:28px;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif">
+<tr><th style="width:42%">Part</th><th style="width:34%">Job</th><th style="width:24%">Pin</th></tr>
+<tr><td>YF-S201 flow sensor 1</td><td>Tank outlet</td><td>GPIO 19</td></tr>
+<tr><td>YF-S201 flow sensor 2</td><td>Tap</td><td>GPIO 22</td></tr>
+<tr><td>Capacitive level sensor</td><td>Tank level</td><td>ADC 33</td></tr>
+<tr><td>DHT22</td><td>Humidity, temperature</td><td>GPIO 4</td></tr>
+<tr><td>DS3231 clock</td><td>Time without Wi-Fi</td><td>I²C 18/21</td></tr>
+<tr><td>SG90 servo + ball valve</td><td>Shut-off valve</td><td>PWM 26</td></tr>
+<tr><td>Active buzzer</td><td>Alarm</td><td>GPIO 13</td></tr>
+</table>
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">5 V pulses, 3.3 V pins</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Each flow signal passes a divider: 10 kΩ to the pin, 20 kΩ to ground.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Separate servo supply</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">The SG90 runs from its own 5 V; all grounds are joined.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Calibrated</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Bucket test for ~450 pulses per litre; empty and full readings for the level.</p>
+</div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>Point to the real board. Two YF-S201 sensors sit on the same pipe, one at the tank outlet and one at the tap. Mention the safety details: the sensors give 5 V pulses, so each passes a resistor divider before the ESP32; the servo has its own supply. Then the calibration: water into a measuring jug to check 450 pulses per litre. Give the measured error from test H1.</aside>
+</section>

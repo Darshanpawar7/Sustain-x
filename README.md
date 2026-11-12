@@ -5,6 +5,7 @@ IoT Mini Project (UE23CS342AA3) · Sense → Ingest → Process → Store → An
 
 Live dashboard: [sustainflow.netlify.app](https://sustainflow.netlify.app/) ·
 Preview without hardware: [sustainflow.netlify.app/?sample](https://sustainflow.netlify.app/?sample) (clearly labelled sample data)
+Project report: [docs/FlowState_Team10_Project_Report.pdf](docs/FlowState_Team10_Project_Report.pdf) · Slides: [docs/FlowState_Team10_Slides.pdf](docs/FlowState_Team10_Slides.pdf)
 
 FlowState puts two flow sensors on the same pipe: one where water leaves the tank, one at the tap.
 Water that leaves the tank but never reaches the tap is a leak. An ESP32 measures both every second,

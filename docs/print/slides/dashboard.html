@@ -1,0 +1,31 @@
+<section id="dashboard" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">The dashboard, live</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:flex;gap:48px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:8px">
+<img src="/_blob/604380df9bfc069dbfb16000d5e111e2" alt="FlowState dashboard: flow through both sensors with a 15-minute chart, leak check, tank level, valve, today's use and humidity" style="width:880px;height:583px;object-fit:contain;background:#E9EBE4;border:1px solid #D9DCD3;border-radius:12px">
+<p style="font-size:24px;color:#6F7C87">Shown with sample data, labelled as such on the page</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:6px;border-left:4px solid #1A6FD1;padding:4px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Values change as readings arrive</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Every 2 s over MQTT; each new value flashes</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;border-left:4px solid #1A6FD1;padding:4px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">The pipeline lights up</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Sense to Analyze, stage by stage, for every reading</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;border-left:4px solid #1A6FD1;padding:4px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Two lines that split mean a leak</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">Sensor 1 and sensor 2 drawn together for 15 minutes</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;border-left:4px solid #1A6FD1;padding:4px 24px">
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Phone, light and dark</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">sustainflow.netlify.app</p>
+</div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>Open the live site here if the network allows. Point out the two flow lines: when they split apart, water is going missing between the sensors. Open a tap and show the numbers changing every 2 seconds, and the pipeline stages lighting up in order. If the ESP32 is not available, the sample-data preview works without hardware and is clearly labelled.</aside>
+</section>

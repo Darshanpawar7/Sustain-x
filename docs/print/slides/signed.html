@@ -1,0 +1,33 @@
+<section id="signed" data-transition="fade" style="background:#F3F4EF;color:#11202B;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-size:72px;font-weight:700;line-height:1.1;color:#11202B">Safe valve control over MQTT</h2>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:48px">
+<div style="display:flex;gap:16px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1">1</p>
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Dashboard signs</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">HMAC-SHA256 with the valve key over the action, the time and a one-time code</p>
+</div>
+<x-shape kind="arrow-right" style="width:48px;height:24px;background:#6F7C87"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1">2</p>
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Broker delivers</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">QoS 1 on /cmd; anyone may publish there, so only the signature counts</p>
+</div>
+<x-shape kind="arrow-right" style="width:48px;height:24px;background:#6F7C87"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#E3EEFB;border:2px solid #1A6FD1;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1">3</p>
+<h3 style="font-size:32px;font-weight:600;color:#11202B">ESP32 checks</h3>
+<p style="font-size:24px;line-height:1.4;color:#11202B">Right signature, under 5 minutes old, newer than the last command</p>
+</div>
+<x-shape kind="arrow-right" style="width:48px;height:24px;background:#6F7C87"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FBFBF8;border:1px solid #D9DCD3;border-radius:16px;padding:28px">
+<p style="font-family:'IBM Plex Mono', 'Courier New', monospace;font-size:24px;font-weight:600;color:#1A6FD1">4</p>
+<h3 style="font-size:32px;font-weight:600;color:#11202B">Valve moves</h3>
+<p style="font-size:24px;line-height:1.4;color:#3A4A57">The servo turns and an answer comes back: 1.24 s measured</p>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#11202B">The key never leaves the browser. <b>KEY_CHECK</b> on the Serial Monitor prints the same 8-character fingerprint the dashboard shows.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#6F7C87">FlowState · Team 10</p>
+<aside>The public broker lets anyone publish, so a valve command is only accepted if it carries a signature that only the valve key can make. The ESP32 also rejects anything older than 5 minutes or not newer than the last command, so a recorded command cannot be replayed. Demo it live: type the key, compare the fingerprint with KEY_CHECK, press Close and watch the servo turn. A wrong key is refused.</aside>
+</section>
