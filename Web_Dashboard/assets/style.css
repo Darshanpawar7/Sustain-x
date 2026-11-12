@@ -576,7 +576,7 @@ input[readonly] { color: var(--ink-3); background: var(--surface-2); }
 
 /* ------------------------------------------------------------------- team */
 .team-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.team-member { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-small); padding: 0.9rem 1rem; display: grid; gap: 0.25rem; }
+.team-member { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-small); padding: 0.9rem 1rem; display: grid; align-content: start; gap: 0.25rem; }
 .team-member strong { font-size: 1.05rem; }
 .team-role { font-family: var(--font-mono); font-size: 0.8rem; color: var(--s1); }
 .team-member p { color: var(--ink-2); font-size: 0.9rem; }

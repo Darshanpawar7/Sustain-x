@@ -203,12 +203,12 @@ Measured on the real HiveMQ broker with a stand-in device: MQTT round trip ≈ 3
 
 ## 10. Team
 
-| Member | Role | Part of the pipeline |
-| --- | --- | --- |
-| *Name* | Team Lead | |
-| *Name* | Second Lead | |
-| *Name* | Member | |
-| *Name* | Member | |
+| Member | SRN | Role | Part of the pipeline |
+| --- | --- | --- | --- |
+| Darshan P Pawar | PES2UG24CS143 | Team Lead | **Process**: leak detection, night watch, automatic valve control, buzzer and system integration |
+| Ganavi Purushothama | PES2UG24CS167 | Second Lead | **Ingest and Store**: Wi-Fi, MQTT communication, HTTPS uploads and the Supabase database |
+| Deepthi N Reddy | PES2UG24CS149 | Member | **Sense and hardware**: sensor integration, ESP32 wiring, calibration and hardware implementation |
+| Dhanush V Biradar | PES2UG24CS155 | Member | **Analyze**: web dashboard, the five analytics questions, data visualization, report and presentation |
 
 The firmware tabs map onto the pipeline stages so each member can own and present one part (see [section 2](#2-architecture-and-design)).
 

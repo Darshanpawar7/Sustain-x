@@ -9,9 +9,29 @@
 
     const project = Object.freeze({
         team: 'Team 10',
-        // Fill in the four members to show the "Team 10" section and the footer names, e.g.
-        // { name: 'A. Student', role: 'Team Lead', part: 'Process: leak rules, valve and night watch on the ESP32' }
-        members: Object.freeze([]),
+        // Shown in the "Team 10" section and the footer: one pipeline stage each.
+        members: Object.freeze([
+            Object.freeze({
+                name: 'Darshan P Pawar',
+                role: 'Team Lead',
+                part: 'Process: leak detection, night watch, automatic valve control, buzzer and system integration'
+            }),
+            Object.freeze({
+                name: 'Ganavi Purushothama',
+                role: 'Second Lead',
+                part: 'Ingest and Store: Wi-Fi, MQTT communication, HTTPS uploads and the Supabase database'
+            }),
+            Object.freeze({
+                name: 'Deepthi N Reddy',
+                role: 'Member',
+                part: 'Sense and hardware: sensor integration, ESP32 wiring, calibration and hardware implementation'
+            }),
+            Object.freeze({
+                name: 'Dhanush V Biradar',
+                role: 'Member',
+                part: 'Analyze: web dashboard, the five analytics questions, data visualization, report and presentation'
+            })
+        ]),
         title: 'IoT Water Leak Detection and Consumption Analytics Using Dual Flow Sensors'
     });
 
