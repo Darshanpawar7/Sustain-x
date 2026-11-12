@@ -76,7 +76,7 @@
   </div>
   <div class="meta">
     <p>12 November 2026</p>
-    <p>Live dashboard: <a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a></p>
+    <p>Live dashboard: <a href="https://iot-team10.netlify.app/">iot-team10.netlify.app</a></p>
     <p>Source code and tests: <a href="https://github.com/Darshanpawar7/Sustain-x">github.com/Darshanpawar7/Sustain-x</a></p>
     <p class="pipeline" style="margin-top:10pt">Sense → Ingest → Process → Store → Analyze</p>
   </div>
@@ -303,7 +303,7 @@
 </ul>
 
 <h2>7. Data analytics and visualization</h2>
-<p>The dashboard (<a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a>) answers each of the five questions with one plain sentence and one chart, from the last 7 days of stored readings in India time. The loss in each 60-second window is computed on the ESP32:</p>
+<p>The dashboard (<a href="https://iot-team10.netlify.app/">iot-team10.netlify.app</a>) answers each of the five questions with one plain sentence and one chart, from the last 7 days of stored readings in India time. The loss in each 60-second window is computed on the ESP32:</p>
 <p class="formula">loss (%) = (V1 − V2) ÷ V1 × 100</p>
 <p>V1 and V2 are the litres through sensor 1 (tank outlet) and sensor 2 (tap) in that window. Below 5% is Normal, 5–15% Warning, and 15% or more Critical.</p>
 <p>The database works out litres used in each hour from the rise in the ESP32’s daily total between readings. A drop to a new day’s total counts as that total; a drop on the same day (a reboot) counts as zero. Litres lost = litres used × loss % for each reading.</p>
@@ -411,7 +411,7 @@
   <li>OASIS, <a href="https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html">MQTT Version 3.1.1</a> (QoS levels, retained messages, Last Will).</li>
   <li>IETF, <a href="https://www.rfc-editor.org/rfc/rfc2104">RFC 2104: HMAC</a> and <a href="https://www.rfc-editor.org/rfc/rfc4231">RFC 4231: HMAC-SHA-256 test vectors</a>.</li>
   <li>Supabase documentation: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Row Level Security</a> and <a href="https://supabase.com/docs/guides/realtime">Realtime</a>.</li>
-  <li>Team 10, FlowState source code and tests: <a href="https://github.com/Darshanpawar7/Sustain-x">github.com/Darshanpawar7/Sustain-x</a>; live dashboard: <a href="https://sustainflow.netlify.app/">sustainflow.netlify.app</a>.</li>
+  <li>Team 10, FlowState source code and tests: <a href="https://github.com/Darshanpawar7/Sustain-x">github.com/Darshanpawar7/Sustain-x</a>; live dashboard: <a href="https://iot-team10.netlify.app/">iot-team10.netlify.app</a>.</li>
 </ol>
 
 <h2>Appendix A. Setting the system up</h2>

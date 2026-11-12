@@ -3,8 +3,8 @@
 **IoT Water Leak Detection and Consumption Analytics Using Dual Flow Sensors**
 IoT Mini Project (UE23CS342AA3) · Sense → Ingest → Process → Store → Analyze
 
-Live dashboard: [sustainflow.netlify.app](https://sustainflow.netlify.app/) ·
-Preview without hardware: [sustainflow.netlify.app/?sample](https://sustainflow.netlify.app/?sample) (clearly labelled sample data)
+Live dashboard: [iot-team10.netlify.app](https://iot-team10.netlify.app/) ·
+Preview without hardware: [iot-team10.netlify.app/?sample](https://iot-team10.netlify.app/?sample) (clearly labelled sample data)
 Project report: [docs/FlowState_Team10_Project_Report.pdf](docs/FlowState_Team10_Project_Report.pdf) · Slides: [docs/FlowState_Team10_Slides.pdf](docs/FlowState_Team10_Slides.pdf)
 
 FlowState puts two flow sensors on the same pipe: one where water leaves the tank, one at the tap.
@@ -158,7 +158,7 @@ Measured: see [section 9](#9-testing-and-results).
 
 ## 6. Data analytics and visualization
 
-The dashboard ([sustainflow.netlify.app](https://sustainflow.netlify.app/)) has:
+The dashboard ([iot-team10.netlify.app](https://iot-team10.netlify.app/)) has:
 
 - **The IoT pipeline**: the five stages light up as each reading arrives, each with its live value.
 - **Live from the ESP32**: both flows and the gap between them, a 15-minute flow chart, the leak scale, tank level, valve, today's litres and cost, humidity and temperature.

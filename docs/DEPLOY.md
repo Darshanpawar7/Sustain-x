@@ -1,29 +1,27 @@
 # Putting the dashboard live on Netlify
 
-The live site (`sustainflow.netlify.app`) only changes when Netlify builds it. It is not linked to GitHub yet,
-so changes in this repository do not reach it on their own. Link it once (option A) and every merge to `main`
-updates the site.
+The live site is **[iot-team10.netlify.app](https://iot-team10.netlify.app/)**. Netlify builds it from this
+repository's `main` branch, so every merge into `main` updates the site in about a minute.
 
-You need two values from Supabase (**Project Settings → API Keys**):
+## Settings the site needs (Netlify, once)
 
-- the **Project URL**, like `https://<your-project>.supabase.co`
-- the **anon** (public) key. Never use the `service_role` key: the build refuses it.
+1. **Project configuration → Environment variables → Add a variable**, with values from Supabase
+   (**Project Settings → API Keys**):
+   - `SUPABASE_URL` = the Project URL, like `https://<your-project>.supabase.co`
+   - `SUPABASE_ANON_KEY` = the **anon** (public) key. Never the `service_role` key: the build refuses it.
+2. **Deploys → Trigger deploy → Deploy project.** Variables are only read when the site is built.
+3. **Project configuration → General → Visitor access → Project visibility → Edit visibility → Public.**
+   New Netlify projects are private by default; until this is set, visitors see a Netlify login page.
 
-## Option A: link the GitHub repository (recommended)
-
-1. Open [app.netlify.com](https://app.netlify.com) and the **sustainflow** site.
-2. **Site configuration → Build & deploy → Continuous deployment → Link repository**. Choose GitHub, then `Darshanpawar7/Sustain-x`, branch `main`.
-3. Leave the build settings to [`netlify.toml`](../netlify.toml): base directory `Web_Dashboard`, build command `node ../scripts/netlify-build.mjs`, publish directory `.`.
-4. **Site configuration → Environment variables → Add a variable**:
-   - `SUPABASE_URL` = the Project URL
-   - `SUPABASE_ANON_KEY` = the anon key
-5. Merge the pull request into `main` on GitHub. Netlify builds and publishes the site in about a minute.
-6. Open the site: the status should read **Live** once the ESP32 is sending data.
+The build settings come from [`netlify.toml`](../netlify.toml): base directory `Web_Dashboard`, build command
+`node ../scripts/netlify-build.mjs`, publish directory `.`.
 
 Optional variables: `MQTT_URL` (default `wss://broker.hivemq.com:8884/mqtt`) and `MQTT_TOPIC_ROOT`
 (default `flowstate/team10-d76014`; it must match `MQTT_TOPIC_ROOT` in the firmware).
 
-## Option B: drag and drop (no GitHub link)
+## Without GitHub: drag and drop
+
+For a Netlify site that is not linked to GitHub:
 
 1. On a PC with Node.js, in the repository folder, run:
 
@@ -43,4 +41,5 @@ Optional variables: `MQTT_URL` (default `wss://broker.hivemq.com:8884/mqtt`) and
 
 - The page header shows **FlowState · Team 10**.
 - *Settings* at the bottom says it is connected to the database it was deployed with.
+- The status reads **Waiting for the ESP32** until the board sends data, then **Live**.
 - `?sample` at the end of the address shows the labelled sample-data preview.
