@@ -136,8 +136,10 @@ void mqttSetup() {
   topicPong = root + "/pong";
 #if MQTT_USE_TLS
   mqttNet.setInsecure();          // encrypted, but the broker certificate is not checked (prototype)
-  mqttNet.setHandshakeTimeout(10);
+  mqttNet.setHandshakeTimeout(10);  // seconds
 #endif
+  // A blocked port must not freeze the sensor loop: the library waits 30 s by default.
+  mqttNet.setConnectionTimeout(5000);  // milliseconds
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
   mqtt.setBufferSize(512);
@@ -155,8 +157,11 @@ void mqttConnectIfNeeded() {
   if (lastMqttAttemptMs != 0 && nowMs - lastMqttAttemptMs < mqttRetryDelayMs) return;
   lastMqttAttemptMs = nowMs;
 
+  // The whole 48-bit MAC, so two boards on the same public broker never share an ID.
   char clientId[32];
-  snprintf(clientId, sizeof(clientId), "flowstate-%08lx", (unsigned long)(ESP.getEfuseMac() & 0xFFFFFFFFULL));
+  const uint64_t mac = ESP.getEfuseMac();
+  snprintf(clientId, sizeof(clientId), "flowstate-%04x%08lx",
+           (unsigned)((mac >> 32) & 0xFFFFU), (unsigned long)(mac & 0xFFFFFFFFUL));
   const char* user = strlen(MQTT_USERNAME) > 0 ? MQTT_USERNAME : nullptr;
   const char* pass = strlen(MQTT_PASSWORD) > 0 ? MQTT_PASSWORD : nullptr;
 

@@ -195,7 +195,7 @@ Details, procedures and the hardware test sheets: [`docs/TESTING.md`](docs/TESTI
 | Browser tests (production CSP, simulated Supabase and MQTT broker) | `npm run test:e2e` | 12 passing |
 | Database (setup applied twice, permissions, limits, hourly analysis) | `npm run test:db` | 42 checks passing (also on the live project, rolled back) |
 | Firmware rules on a PC (leak levels, night window, learning, command checks) | `g++` (see `tests/firmware`) | 61 checks passing |
-| Firmware build for the ESP32 (with and without MQTT) | CI | 85 % / 83 % of flash, 15 % of RAM |
+| Firmware build for the ESP32 (with and without MQTT) | CI | 85 % / 83 % of flash, 16 % of RAM |
 
 Measured on the real HiveMQ broker with a stand-in device: MQTT round trip ≈ 310 ms (median), 100 % delivery,
 220 bytes per message, a signed valve command confirmed in 1.2 s.

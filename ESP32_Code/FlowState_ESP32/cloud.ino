@@ -102,16 +102,19 @@ String currentTimestamp() {
 }
 
 // ---------------- SUPABASE (HTTPS REST) ----------------
-// POSTs JSON to a Supabase table. A dropped keep-alive connection fails with a
-// negative code; then the connection is reopened and the upload tried once more.
+// POSTs JSON to a Supabase table. The TLS connection is kept open between
+// uploads; if the server has closed it in the meantime, sending fails at once,
+// and then the upload is tried once more on a fresh connection. Anything else
+// (a read timeout, a slow network) is not retried: the row may already be stored.
 int postJson(const char* table, const String& payload) {
   const String url = String(SUPABASE_URL) + "/rest/v1/" + table;
-  int code = -1;
+  int code = HTTPC_ERROR_CONNECTION_REFUSED;
   for (uint8_t attempt = 0; attempt < 2; attempt++) {
+    const unsigned long startedMs = millis();
     HTTPClient http;
     http.setReuse(true);
     if (!http.begin(secureClient, url)) {
-      code = -1;
+      code = HTTPC_ERROR_CONNECTION_REFUSED;
     } else {
       http.setTimeout(7000);
       http.setConnectTimeout(7000);
@@ -124,7 +127,10 @@ int postJson(const char* table, const String& payload) {
       http.end();
     }
     if (code > 0) break;
-    secureClient.stop();  // start the next attempt on a fresh connection
+    secureClient.stop();  // never reuse a connection that just failed
+    const bool sendFailed = code == HTTPC_ERROR_SEND_HEADER_FAILED || code == HTTPC_ERROR_SEND_PAYLOAD_FAILED ||
+                            code == HTTPC_ERROR_NOT_CONNECTED || code == HTTPC_ERROR_CONNECTION_LOST;
+    if (!sendFailed || millis() - startedMs > 3000UL) break;
   }
   return code;
 }
@@ -164,44 +170,79 @@ void sendDataToSupabase() {
   const int code = postJson(SUPABASE_READINGS_TABLE, payload);
   lastUploadDurationMs = millis() - startedMs;
   uploadsSent++;
-  if (code < 200 || code >= 300) httpFailures++;
+  if (code >= 200 && code < 300) {
+    consecutiveUploadFailures = 0;
+  } else {
+    httpFailures++;
+    if (consecutiveUploadFailures < 255) consecutiveUploadFailures++;
+    if (consecutiveUploadFailures == 3) {
+      Serial.println("[Supabase] Three uploads failed in a row; trying once a minute until one works.");
+    }
+  }
   Serial.printf("[Supabase] water_readings HTTP %d in %lu ms (%u bytes)\n",
                 code, (unsigned long)lastUploadDurationMs, (unsigned)payload.length());
 }
 
+// Sends the alert over MQTT at once and queues its HTTPS upload, so nothing
+// here waits for the network: callers can close the valve straight after.
 void logAlert(const String& alertType, const String& message) {
   const char* severity = (alertType.indexOf("CRITICAL") >= 0) ? "high" : "medium";
   mqttPublishAlert(alertType, message, severity);  // instant, when MQTT is connected
-
-  if (WiFi.status() != WL_CONNECTED || !clockReady() || !wifiConfigured) {
-    Serial.println("[Alert] Not uploaded (Wi-Fi/clock/configuration unavailable): " + alertType);
+  if (!wifiConfigured) {
+    Serial.println("[Alert] Not uploaded (Wi-Fi not configured): " + alertType);
     return;
   }
+  if (alertQueueCount == ALERT_QUEUE_SIZE) {
+    Serial.println("[Alert] Upload queue full; dropping the oldest: " + alertQueue[alertQueueStart].type);
+    alertQueueStart = (alertQueueStart + 1) % ALERT_QUEUE_SIZE;
+    alertQueueCount--;
+  }
+  QueuedAlert& slot = alertQueue[(alertQueueStart + alertQueueCount) % ALERT_QUEUE_SIZE];
+  slot.type = alertType;
+  slot.message = message;
+  slot.severity = severity;
+  slot.timestamp = currentTimestamp();  // empty while the clock is not set; filled in when sent
+  alertQueueCount++;
+}
 
+// Uploads at most one waiting alert per loop pass. After a network failure it
+// waits 15 s before trying again; an alert the database refuses (4xx) is dropped.
+void flushAlertQueue() {
+  if (alertQueueCount == 0 || WiFi.status() != WL_CONNECTED || !clockReady()) return;
+  if (millis() - alertWaitStartMs < alertWaitMs) return;
+
+  QueuedAlert& alert = alertQueue[alertQueueStart];
   StaticJsonDocument<512> doc;
-  doc["timestamp"] = currentTimestamp();
-  doc["alert_type"] = alertType;
-  doc["message"] = message;
-  doc["severity"] = severity;
+  doc["timestamp"] = alert.timestamp.length() > 0 ? alert.timestamp : currentTimestamp();
+  doc["alert_type"] = alert.type;
+  doc["message"] = alert.message;
+  doc["severity"] = alert.severity;
 
   String payload;
   serializeJson(doc, payload);
   const int code = postJson(SUPABASE_ALERTS_TABLE, payload);
-  Serial.printf("[Alert] %s | HTTP %d\n", alertType.c_str(), code);
-}
-
-// ---------------- PERSISTENT DAILY TOTAL ----------------
-void saveDailyTotal() {
-  if (!preferencesReady) return;
-  preferences.putDouble("dailyL", state.dailyTotalLiters);
-  if (clockReady() && storedDateKey != 0) {
-    storedDateKey = makeDateKey(localNow());
-    preferences.putUInt("datekey", storedDateKey);
+  Serial.printf("[Alert] %s | HTTP %d\n", alert.type.c_str(), code);
+  if (code > 0 && code < 500) {
+    alertQueueStart = (alertQueueStart + 1) % ALERT_QUEUE_SIZE;
+    alertQueueCount--;
+    alertWaitMs = 0;
+  } else {
+    alertWaitStartMs = millis();
+    alertWaitMs = 15000UL;
   }
 }
 
+// ---------------- PERSISTENT DAILY TOTAL ----------------
+// Saves the total under the date it belongs to. Only checkForNewDay() moves
+// that date on, so a save at midnight cannot skip the reset.
+void saveDailyTotal() {
+  if (!preferencesReady) return;
+  preferences.putDouble("dailyL", state.dailyTotalLiters);
+  if (storedDateKey != 0) preferences.putUInt("datekey", storedDateKey);
+}
+
 void checkForNewDay() {
-  if (!clockReady() || !preferencesReady) return;
+  if (!clockReady()) return;
   const uint32_t todayKey = makeDateKey(localNow());
 
   if (storedDateKey == 0) {
@@ -211,16 +252,20 @@ void checkForNewDay() {
       state.dailyTotalLiters = 0.0;
       Serial.println("[TOTAL] Saved total is from another day; today's total starts at 0 L.");
     }
-    preferences.putUInt("datekey", storedDateKey);
-    preferences.putDouble("dailyL", state.dailyTotalLiters);
+    if (preferencesReady) {
+      preferences.putUInt("datekey", storedDateKey);
+      preferences.putDouble("dailyL", state.dailyTotalLiters);
+    }
     return;
   }
 
   if (todayKey != storedDateKey) {
     state.dailyTotalLiters = 0.0;
     storedDateKey = todayKey;
-    preferences.putUInt("datekey", storedDateKey);
-    preferences.putDouble("dailyL", 0.0);
+    if (preferencesReady) {
+      preferences.putUInt("datekey", storedDateKey);
+      preferences.putDouble("dailyL", 0.0);
+    }
     Serial.println("[TOTAL] Midnight/date change detected. Daily total reset to 0 L.");
   }
 }

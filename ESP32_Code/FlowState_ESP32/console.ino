@@ -97,6 +97,7 @@ void printStatus() {
   Serial.println();
   Serial.printf("Supabase uploads:    %lu sent, %lu failed, last took %lu ms\n",
                 (unsigned long)uploadsSent, (unsigned long)httpFailures, (unsigned long)lastUploadDurationMs);
+  Serial.printf("Alerts waiting:      %u to upload\n", (unsigned)alertQueueCount);
 #if ENABLE_MQTT
   Serial.printf("MQTT:                %s to %s:%u, %lu messages, %lu connections\n",
                 mqtt.connected() ? "CONNECTED" : "DISCONNECTED", MQTT_HOST, MQTT_PORT,

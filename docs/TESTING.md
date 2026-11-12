@@ -41,7 +41,7 @@ Recorded on 12 November 2026.
 | Browser tests | **12 / 12 pass** | Strict CSP; live MQTT readings and pipeline; the five answers from stored data; charts actually painted; alert text never runs as code; signed valve commands with the right and the wrong key; offline warning; future-dated readings ignored; deployment locked to its database; secret key refused; CSV export; sample data labelled; no sideways scrolling on a phone |
 | Database | **42 / 42 checks pass** | The sketch's exact upload accepted; firmware v2 health fields; values out of range refused; edits and deletes refused; a wrong device clock corrected; flood limit (61st reading, 31st alert refused); hourly usage, loss, night flow and health averages; India time zone |
 | Firmware rules | **61 / 61 checks pass** (GitHub Actions, g++ on Ubuntu) | Loss and levels, night window across midnight, learning average, anomaly rule, command checks (stale, replay, clock), signed text identical to the dashboard's, constant-time comparison |
-| Firmware build | **pass**, no warnings from the sketch | With MQTT: 1,114,895 bytes of flash (85 %), 52,212 bytes of RAM (15 %). Without MQTT: 1,098,063 bytes (83 %). ESP32 core 3.3.12 |
+| Firmware build | **pass**, no warnings from the sketch | With MQTT: 1,116,043 bytes of flash (85 %), 52,644 bytes of RAM (16 %). Without MQTT: 1,099,187 bytes (83 %). ESP32 core 3.3.12 |
 
 ## 3. Checks on the live services
 

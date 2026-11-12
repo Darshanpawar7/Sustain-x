@@ -237,6 +237,24 @@ uint8_t lastAnomalyAlertHour = 255;
 uint32_t httpFailures = 0;          // failed Supabase uploads since boot
 uint32_t lastUploadDurationMs = 0;  // how long the last HTTPS upload took
 uint32_t uploadsSent = 0;
+uint8_t consecutiveUploadFailures = 0;  // 3 or more: upload once a minute until one works
+const unsigned long SLOW_UPLOAD_INTERVAL_MS = 60000;
+
+// ---------------- ALERT UPLOAD QUEUE ----------------
+// An alert goes out over MQTT at once; its HTTPS upload waits here and is sent
+// from loop(), so a slow network never delays closing the valve.
+struct QueuedAlert {
+  String type;
+  String message;
+  String timestamp;
+  const char* severity;
+};
+const uint8_t ALERT_QUEUE_SIZE = 8;
+QueuedAlert alertQueue[ALERT_QUEUE_SIZE];
+uint8_t alertQueueStart = 0;
+uint8_t alertQueueCount = 0;
+unsigned long alertWaitStartMs = 0;
+unsigned long alertWaitMs = 0;   // after a failed upload, wait before the next try
 
 // ---------------- MQTT STATE ----------------
 String topicTelemetry, topicStatus, topicAlert, topicCommand, topicAck, topicPing, topicPong;
@@ -282,6 +300,7 @@ String currentTimestamp();
 int postJson(const char* table, const String& payload);
 void sendDataToSupabase();
 void logAlert(const String& alertType, const String& message);
+void flushAlertQueue();
 void saveDailyTotal();
 void checkForNewDay();
 // mqtt.ino
@@ -375,6 +394,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_2_PIN), flowSensor2ISR, FALLING);
 
   secureClient.setInsecure(); // Suitable for prototype testing; use certificate validation in production.
+  secureClient.setHandshakeTimeout(10); // seconds; the library default of 120 s could stall the loop
   wifiConfigured = credentialsConfigured();
   mqttSetup();
   if (wifiConfigured) {
@@ -431,9 +451,12 @@ void loop() {
     processDetectionWindow();
   }
 
-  // INGEST + STORE: upload a reading every 10 seconds. Flow counting continues in the ISRs.
+  // INGEST + STORE: upload a reading every 10 seconds (once a minute while uploads keep
+  // failing). Flow counting continues in the ISRs.
+  const unsigned long uploadIntervalMs =
+      consecutiveUploadFailures >= 3 ? SLOW_UPLOAD_INTERVAL_MS : SUPABASE_UPLOAD_INTERVAL_MS;
   if (wifiConfigured && WiFi.status() == WL_CONNECTED &&
-      nowMs - lastUploadMs >= SUPABASE_UPLOAD_INTERVAL_MS) {
+      nowMs - lastUploadMs >= uploadIntervalMs) {
     lastUploadMs = nowMs;
     sendDataToSupabase();
   }
@@ -441,13 +464,16 @@ void loop() {
   // INGEST (live): MQTT telemetry, status and valve commands.
   mqttService();
 
-  // Save the daily total periodically to survive resets/power cuts.
+  // STORE: send one waiting alert, after the sensing and the valve have had their turn.
+  flushAlertQueue();
+
+  // Move to a new day first, then save the daily total so it survives resets and power cuts.
+  checkForNewDay();
   if (nowMs - lastPreferencesSaveMs >= PREFERENCES_SAVE_INTERVAL_MS) {
     lastPreferencesSaveMs = nowMs;
     saveDailyTotal();
   }
 
-  checkForNewDay();
   handleSerialCommands();
   updateBuzzer();
   delay(5);
