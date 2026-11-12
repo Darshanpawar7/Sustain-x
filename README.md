@@ -180,7 +180,7 @@ The dashboard ([sustainflow.netlify.app](https://sustainflow.netlify.app/)) has:
 
 1. **Database**: create a Supabase project, open the SQL Editor, paste and run [`supabase/flowstate_setup.sql`](supabase/flowstate_setup.sql) once. Copy the project URL and the **anon** key from *Project Settings → API Keys*.
 2. **Firmware**: install the libraries above (Arduino IDE, board *ESP32 Dev Module*). Copy `secrets.example.h` to `secrets.h`, fill in Wi-Fi (2.4 GHz), the Supabase URL and anon key, and a random valve key. Upload, open the Serial Monitor at 115200 baud, type `STATUS`.
-3. **Dashboard**: on Netlify, connect this repository (base directory `Web_Dashboard`, build command from [`netlify.toml`](netlify.toml)) and set the environment variables `SUPABASE_URL` and `SUPABASE_ANON_KEY`. Optional: `MQTT_URL`, `MQTT_TOPIC_ROOT`.
+3. **Dashboard**: on Netlify, connect this repository (base directory `Web_Dashboard`, build command from [`netlify.toml`](netlify.toml)) and set the environment variables `SUPABASE_URL` and `SUPABASE_ANON_KEY`. Optional: `MQTT_URL`, `MQTT_TOPIC_ROOT`. Step by step: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 4. **Check**: the dashboard should show *Live*; type the valve key in the valve panel and compare its *Key check* with `KEY_CHECK` on the Serial Monitor.
 
 Never put the `service_role` key, the database password or `secrets.h` anywhere public.

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-11-12
+
+Team 10's IoT Mini Project release: the repository now matches the team's final firmware and the course's
+Sense → Ingest → Process → Store → Analyze pipeline.
+
+### Added
+
+- **Firmware v2** (`ESP32_Code/FlowState_ESP32`), built on the team's final sketch with the same pins, thresholds and
+  behaviour, one tab per pipeline stage. New: MQTT over TLS (telemetry every 2 s with sequence numbers, a retained
+  online status with a Last Will, instant alerts, ping/pong), HMAC-SHA256-signed valve commands that expire after
+  5 minutes and cannot be replayed, NTP correction of the DS3231 (or time without one), a kept-alive HTTPS connection
+  with one retry, connectivity health in every reading, and `KEY_CHECK` / `HELP` on the Serial Monitor.
+- **One-step database setup** (`supabase/flowstate_setup.sql`) and `get_hourly_summary()` for the analysis.
+- **Dashboard** for the course: Team 10, the five pipeline stages lit live, live readings over MQTT, the five
+  questions (loss, busiest hours, unusual use, night flow, cost), valve control, a connectivity and performance
+  panel, an architecture diagram, cited real-world context, and a clearly labelled sample-data preview.
+- Tests: firmware rules on a PC (61 checks), database (42), dashboard unit (26) and browser (12), plus an ESP32
+  build with and without MQTT in CI. `docs/TESTING.md` with the measured results and the hardware test sheets.
+
+### Changed
+
+- The public (anon) key may add rows again, because the final firmware posts straight into the tables. In place of
+  v1.1's device keys: every value is range-checked, rows can never be changed or deleted, a wrong device clock is
+  corrected, and inserts are flood-limited. Valve commands no longer go through the database: they are signed MQTT
+  messages that only the holder of the valve key can make.
+- The v1.1 firmware and migrations moved to `archive/v1.1-rpc-design` (migration 005 would block the final firmware).
+
+### Removed
+
+- The competition-only "Sustainability Impact Lab" scoring cards, the "Impact Intelligence Studio" and Judges Demo Mode.
+
 ## [1.1.0] - 2026-09-29
 
 ### Security
